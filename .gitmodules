@@ -1,0 +1,3 @@
+[submodule "depends/polytools"]
+	path = depends/polytools
+	url = https://github.com/IntelLabs/HERACLES-SEAL-polytools
