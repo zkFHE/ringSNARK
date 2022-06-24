@@ -7,16 +7,16 @@ find_package(SEAL 4.0 REQUIRED)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/depends")
 
-add_library(rinocchio)
-target_sources(rinocchio PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/ring.cpp)
-target_include_directories(rinocchio PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include/)
+add_library(rinocchio INTERFACE)
+#target_sources(rinocchio PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/ring.cpp)
+target_include_directories(rinocchio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include/)
 
 
-target_link_libraries(rinocchio PUBLIC polytools)
+target_link_libraries(rinocchio INTERFACE polytools)
 if (TARGET SEAL::seal)
-    target_link_libraries(rinocchio PUBLIC SEAL::seal)
+    target_link_libraries(rinocchio INTERFACE SEAL::seal)
 elseif (TARGET SEAL::seal_shared)
-    target_link_libraries(rinocchio PUBLIC SEAL::seal_shared)
+    target_link_libraries(rinocchio INTERFACE SEAL::seal_shared)
 else ()
     message(FATAL_ERROR "Cannot find target SEAL::seal or SEAL::seal_shared")
 endif ()
