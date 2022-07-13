@@ -28,14 +28,10 @@ bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<Se
         r6 = 3; //rand() % (p1.value() - 1) + 1;
     } while (r5 == r6);
     uint64_t inv = 1; // (r6-r5)^-1 = 1, since (3-2) * 1 == 1 mod q
-    uint64_t min_inv = (q1-inv) % q1;
+    uint64_t min_inv = (q1 - inv) % q1;
     uint64_t r5_inv = (r5 * inv) % q1;
-    uint64_t min_r5_inv = (q1-r5_inv)%q1;
+    uint64_t min_r5_inv = (q1 - r5_inv) % q1;
     uint64_t r5_r6 = (r5 * r6) % q1;
-
-    size_t d = 1; // Multiplicative depth
-    size_t m = 6; // Number of inputs
-    vector<vector<A>> v(m + 1), w(m + 1), y(m + 1);
 
     R c1 = values_io[0];
     R c2 = values_io[1];
@@ -44,142 +40,102 @@ bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<Se
     R c5 = values_mid[0];
     R c6 = values_io[4];
 
-    auto tables = context.get_context_data(c1.get_parms_id())->small_ntt_tables();
+    auto start = chrono::high_resolution_clock::now();
+    vector<vector<A>> v{
+            vector<A>{min_r5_inv, inv},
+            vector<A>{min_r5_inv, inv},
+            vector<A>{(1 + r5_inv) % q1, min_inv},
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{0, 0}
+    };
 
+    vector<vector<A>> w{
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{(1 + r5_inv) % q1, min_inv},
+            vector<A>{min_r5_inv, inv},
+            vector<A>{0, 0}
+    };
 
-    // v0: [c3  - r5 * (r6-r5)^-1 * ((c1+c2) - c3),       (r6-r5)^-1 * ((c1+c2) - c3))]
-    vector<R> vCoeffs;
-    {
-        // diff = c1+c2-c3
-        R diff(c1);
-        diff.add_inplace(c2);
-        diff.subtract_inplace(c3);
+    vector<vector<A>> y{
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{0, 0},
+            vector<A>{(1 + r5_inv) % q1, min_inv},
+            vector<A>{min_r5_inv, inv}
+    };
 
-        R coeff_0(diff);
-        uint64_t scalar = min_r5_inv;
-        coeff_0.multiply_scalar_inplace(scalar);
-        coeff_0.add_inplace(c3);
-        vCoeffs.push_back(coeff_0);
-
-        R coeff_1(diff);
-        coeff_1.multiply_scalar_inplace(inv);
-        vCoeffs.push_back(coeff_1);
-    }
-
-    Poly<R, A> v0{vCoeffs};
-    v[0] = vector<A>{min_r5_inv, inv};
-    v[1] = vector<A>{min_r5_inv, inv};
-    v[2] = vector<A>{(1 + r5_inv) % q1, min_inv};
-    v[3] = vector<A>{0, 0};
-    v[4] = vector<A>{0, 0};
-    v[5] = vector<A>{0, 0};
-
-    // w0: [c4 - r5 * (r6-r5)^-1 * (c5-c4),        (r6-r5)^-1 * (c5-c4)]
-    vector<R> wCoeffs;
-    {
-        // diff = c5-c4
-        R diff(c5);
-        diff.subtract_inplace(c4);
-
-        R coeff_0(diff);
-        uint64_t scalar = min_r5_inv;
-        coeff_0.multiply_scalar_inplace(scalar);
-        coeff_0.add_inplace(c4);
-        wCoeffs.push_back(coeff_0);
-
-        R coeff_1(diff);
-        coeff_1.multiply_scalar_inplace(inv);
-        wCoeffs.push_back(coeff_1);
-    }
-
-    Poly<R, A> w0{wCoeffs};
-    w[0] = vector<A>{0, 0};
-    w[1] = vector<A>{0, 0};
-    w[2] = vector<A>{0, 0};
-    w[3] = vector<A>{(1 + r5_inv) % q1, min_inv};
-    w[4] = vector<A>{min_r5_inv, inv};
-    w[5] = vector<A>{0, 0};
-
-    // y0: [c5 - r5 * (r6-r5)^-1 * (c6-c5),        (r6-r5)^-1 * (c6-c5)]
-    vector<R> yCoeffs;
-    {
-        // diff = c6-c5
-        R diff(c6);
-        diff.subtract_inplace(c5);
-
-        R coeff_0(diff);
-        uint64_t scalar = min_r5_inv;
-        coeff_0.multiply_scalar_inplace(scalar);
-        coeff_0.add_inplace(c5);
-        yCoeffs.push_back(coeff_0);
-
-        R coeff_1(diff);
-        coeff_1.multiply_scalar_inplace(inv);
-        yCoeffs.push_back(coeff_1);
-    }
-
-    Poly<R, A> y0{yCoeffs};
-    y[0] = vector<A>{0, 0};
-    y[1] = vector<A>{0, 0};
-    y[2] = vector<A>{0, 0};
-    y[3] = vector<A>{0, 0};
-    y[4] = vector<A>{(1 + r5_inv) % q1, min_inv};
-    y[5] = vector<A>{min_r5_inv, inv};
-
-    uint64_t min_r5_min_r6 = (q1-r5) %q1;
+    uint64_t min_r5_min_r6 = (q1 - r5) % q1;
     min_r5_min_r6 = (q1 + min_r5_min_r6 - r6) % q1;
     vector<A> t{r5_r6, min_r5_min_r6, 1};
 
-    // h: [4 * ((r6-r5)^-1)^2 * (c1+c2-c3) * (c5-c4)]
-    R tmp(c4);
-    tmp.subtract_inplace(c5);
-
+    //// h: [4 * ((r6-r5)^-1)^2 * (c1+c2-c3) * (c5-c4)]
+    // h: ((r6-r5)^-1)^2 * (c1+c2-c3) * (c1+c2-c4)
     R h0(c1);
     h0.add_inplace(c2);
+    R tmp(h0);
     h0.subtract_inplace(c3);
+    tmp.subtract_inplace(c4);
 
-
-//    tmp.ntt_inplace(tables);
-//    h0.ntt_inplace(tables);
     h0.multiply_inplace(tmp);
-//    h0.intt_inplace(tables);
 
     uint64_t scalar = (inv * inv) % q1;
-    scalar = (4 * scalar) % q1;
     h0.multiply_scalar_inplace(scalar);
-
 
     Poly<R, A> h{vector<R>{h0}};
 
     vector<size_t> indices_io{0, 1, 2, 3, 5};
     vector<size_t> indices_mid{4};
     vector<R> values{c1, c2, c3, c4, c5, c6};
-    SnarkParameters<R, A> snarkParameters(context, values,
-                                          indices_io, indices_mid,
-                                          v0, w0, y0,
-                                          v, w, y, t, h);
+    SnarkParameters<R, A> snarkParameters(context, values, indices_io, indices_mid, v, w, y, t, h);
 
     Prover<E, R, A> prover;
     Verifier<E, R, A> verifier(snarkParameters, params);
 
     // TODO
-    R alpha(c1);
+    const R &alpha(c1);
 
     A s = 3;
-    R beta(c2);
+    const R &beta(c2);
 
     R r_v(c3);
-    R r_w(c4);
-    r_v.multiply_scalar_inplace(0);
+    const R &r_w(c4);
+    //r_v.multiply_scalar_inplace(0);
     R r_y(r_v);
     r_y.multiply_inplace(r_w);
 
+    auto end = chrono::high_resolution_clock::now();
+    cout << "=======================================" << endl;
+    cout << "QRP setup\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
+         << " us"
+         << endl;
 
+    start = chrono::high_resolution_clock::now();
     auto vk = verifier.generate_vk(snarkParameters, s, alpha, beta, r_v, r_w, r_y);
+    end = chrono::high_resolution_clock::now();
+    cout << "Setup (CRS, vk)\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
+         << " us"
+         << endl;
+
+
     auto crs = vk.crs;
 
+    start = chrono::high_resolution_clock::now();
     auto proof = prover.prove(snarkParameters, crs);
+    end = chrono::high_resolution_clock::now();
+    cout << "Prove\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
+         << " us"
+         << endl;
+
+    start = chrono::high_resolution_clock::now();
     bool verified = verifier.verify(vk, snarkParameters, proof);
+    end = chrono::high_resolution_clock::now();
+    cout << "Verify\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
+         << " us"
+         << endl << flush;
     return verified;
 }
 
@@ -247,6 +203,13 @@ int main() {
     x2.ntt_inplace(tables);
     x3.ntt_inplace(tables);
     x4.ntt_inplace(tables);
+    auto end = chrono::high_resolution_clock::now();
+    cout << "=======================================" << endl;
+    cout << "Eval: 4 NTT\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
+         << " us"
+         << endl;
+
+    start = chrono::high_resolution_clock::now();
 
     SealPoly x5(x3);
     x5.multiply_inplace(x4);
@@ -257,9 +220,9 @@ int main() {
     SealPoly x6(x5);
     x6.multiply_inplace(tmp);
 
-    auto end = chrono::high_resolution_clock::now();
+    end = chrono::high_resolution_clock::now();
     cout << "=======================================" << endl;
-    cout << "Eval{r = (x1+x2) * y: " << chrono::duration_cast<chrono::microseconds>(end - start).count()
+    cout << "Eval{x6=(x1+x2)*x5; x5=x3*x4}\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
          << " us"
          << endl;
 
@@ -268,5 +231,23 @@ int main() {
 
     bool verified = prove_circuit(context, params, values_io, values_mid);
     cout << "Verification: " << verified << endl;
+
+
+    /**/
+//    Plaintext x_ptxt;
+//    decryptor.decrypt(x_enc, x_ptxt);
+//    vector<uint64_t> x_vec;
+//    batch_encoder.decode(x_ptxt, x_vec);
+//    cout << x_vec[0] << endl;
+//
+//    Plaintext zero;
+//    vector<uint64_t> zero_vec(params.poly_modulus_degree());
+//    batch_encoder.encode(zero_vec, zero);
+//    evaluator.multiply_plain_inplace(x_enc, zero);
+//    decryptor.decrypt(x_enc, x_ptxt);
+//    vector<uint64_t> x_vec2;
+//    batch_encoder.decode(x_ptxt, x_vec2);
+//    cout << x_vec2[0] << endl;
+
     return verified;
 }

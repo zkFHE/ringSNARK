@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <utility>
+#include <set>
 #include "ring.h"
 #include "seal/seal.h"
 
@@ -16,22 +17,43 @@ namespace rinocchio {
     public:
         SnarkParameters(SEALContext context, const vector<R> &values,
                         const vector<size_t> &indices_io, const vector<size_t> &indices_mid,
-                        const Poly<R, A> &v0, const Poly<R, A> &w0,
-                        const Poly<R, A> &y0, const vector<vector<A>> &v, const vector<vector<A>> &w,
-                        const vector<vector<A>> &y,
+                        const vector<vector<A>> &v, const vector<vector<A>> &w, const vector<vector<A>> &y,
                         const vector<A> &t, const Poly<R, A> &h) :
                 context(std::move(context)), values(values),
-                indices_io(indices_io), indices_mid(indices_mid), v0(v0), w0(w0), y0(y0),
+                indices_io(indices_io), indices_mid(indices_mid),
                 v(v), w(w), y(y), t(t), h(h) {
             num_io = indices_io.size();
             num_mid = indices_mid.size();
             values_mid = vector<R>();
+            set<size_t> indices;
+            if (v.size() != w.size() || v.size() != y.size()) {
+                throw invalid_argument("v, w, y must have the same size");
+            }
+            size_t max_index = v.size() - 1;
+
             for (size_t i_mid: indices_mid) {
+                if (i_mid > max_index) {
+                    throw invalid_argument("intermediate index too big");
+                }
                 values_mid.push_back(values[i_mid]);
+                if (indices.count(i_mid)) {
+                    throw invalid_argument("duplicate intermediate index " + to_string(i_mid));
+                }
+                indices.insert(i_mid);
             }
             values_io = vector<R>();
             for (size_t i_io: indices_io) {
+                if (i_io > max_index) {
+                    throw invalid_argument("input/output index too big");
+                }
                 values_io.push_back(values[i_io]);
+                if (indices.count(i_io)) {
+                    throw invalid_argument("duplicate input/output index " + to_string(i_io));
+                }
+                indices.insert(i_io);
+            }
+            if (indices.size() != v.size()) {
+                throw invalid_argument("mismatched number of indices and number of polynomials");
             }
         }
 
@@ -43,7 +65,6 @@ namespace rinocchio {
         vector<size_t> indices_mid;
         size_t num_io;
         size_t num_mid;
-        Poly<R, A> v0, w0, y0;
         vector<vector<A>> v, w, y;
         vector<A> t;
         Poly<R, A> h;
@@ -87,8 +108,8 @@ namespace rinocchio {
     public:
         Proof<E> prove(SnarkParameters<R, A> params, CRS<E> crs);
 
-        E sum(const vector<E> &values);
         E inner_prod_enc_ring(const vector<R> &poly, const vector<E> &values);
+
         E inner_prod_enc_exc(const vector<A> &poly, const vector<E> &values);
     };
 
@@ -114,12 +135,15 @@ namespace rinocchio {
         E encode(void *pk, R x);
 
         E encode(void *pk, A x);
+
+        bool is_unit(R x);
     };
 
     template<typename R, typename A>
     SnarkParameters<R, A> setup(uint64_t security_param);
 }  // namespace rinocchio
 
-#include "ring_snark.tpp"
+#include "prover.tpp"
+#include "verifier.tpp"
 
 #endif
