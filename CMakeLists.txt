@@ -8,7 +8,8 @@ find_package(SEAL 4.0 REQUIRED)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/depends")
 
 add_library(rinocchio INTERFACE)
-#target_sources(rinocchio PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/ring.cpp)
+target_sources(rinocchio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src/seal_prover.cpp)
+target_sources(rinocchio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src/seal_verifier.cpp)
 target_include_directories(rinocchio INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include/)
 
 

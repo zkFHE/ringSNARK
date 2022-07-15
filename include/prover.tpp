@@ -34,7 +34,6 @@ Proof<E> Prover<E, R, A>::prove(SnarkParameters<R, A> params, CRS<E> crs) {
     E d_alpha = inner_prod_enc_ring(params.h.coeffs, crs.alpha_s_pows);
 
     // Compute F
-    // TODO: do we need F for security?
     E f = inner_prod_enc_ring(params.values_mid, crs.beta_prod);
 
     return Proof<R>{a, a_alpha, b, b_alpha, c, c_alpha, d, d_alpha, f};
@@ -44,12 +43,12 @@ template<typename E, typename R, typename A>
 E Prover<E, R, A>::inner_prod_enc_ring(const vector<R> &poly, const vector<E> &values) {
     assert(poly.size() <= values.size()); // poly might have lower degree
     E res(values[0]);
-    res.multiply_inplace(poly[0]);
+    res = multiply_inplace(res, poly[0]);
     for (size_t j = 1; j < poly.size(); j++) {
         // TODO: add check for poly == 0 \in R here?
         E tmp(values[j]);
-        tmp.multiply_inplace(poly[j]);
-        res.add_inplace(tmp);
+        tmp = multiply_inplace(tmp, poly[j]);
+        res = add_inplace(res, tmp);
     }
     return res;
 }
@@ -58,12 +57,12 @@ template<typename E, typename R, typename A>
 E Prover<E, R, A>::inner_prod_enc_exc(const vector<A> &poly, const vector<E> &values) {
     assert(poly.size() == values.size());
     E res(values[0]);
-    res.multiply_scalar_inplace(poly[0]);
+    res = multiply_inplace(res, poly[0]);
     for (size_t j = 1; j < values.size(); j++) {
         if (poly[j] != 0) {
             E tmp(values[j]);
-            tmp.multiply_scalar_inplace(poly[j]);
-            res.add_inplace(tmp);
+            tmp = multiply_inplace(tmp, poly[j]);
+            res = add_inplace(res, tmp);
         }
     }
     return res;

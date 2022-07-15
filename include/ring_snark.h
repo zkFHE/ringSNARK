@@ -1,8 +1,6 @@
 #ifndef RING_SNARK_H
 #define RING_SNARK_H
 
-#include <cmath>
-#include <iostream>
 #include <utility>
 #include <set>
 #include "ring.h"
@@ -106,37 +104,67 @@ namespace rinocchio {
     template<typename E, typename R, typename A>
     class Prover {
     public:
+        Prover() = default;
+
+        ~Prover() = default;
+
         Proof<E> prove(SnarkParameters<R, A> params, CRS<E> crs);
 
+    protected:
         E inner_prod_enc_ring(const vector<R> &poly, const vector<E> &values);
 
         E inner_prod_enc_exc(const vector<A> &poly, const vector<E> &values);
+
+        virtual E multiply_inplace(E &e, const A &a) = 0;
+
+        virtual E multiply_inplace(E &e, const R &r) = 0;
+
+        virtual E add_inplace(E &e1, const E &e2) = 0;
     };
 
     template<typename E, typename R, typename A>
     class Verifier {
     public:
         SnarkParameters<R, A> snark_parameters;
-        EncryptionParameters encryption_parameters;
 
-        explicit Verifier(SnarkParameters<R, A> snark_parameters, EncryptionParameters encryption_parameters)
-                : snark_parameters(snark_parameters),
-                  encryption_parameters(encryption_parameters) {}
+        explicit Verifier(SnarkParameters<R, A> snark_parameters) : snark_parameters(snark_parameters) {}
+
 
         VerifKey<E, R, A> generate_vk(SnarkParameters<R, A> snark_parameters, A s, R alpha, R beta, R r_v,
                                       R r_w, R r_y);
 
         bool verify(VerifKey<E, R, A> vk, SnarkParameters<R, A> params, Proof<E> proof);
 
-        A eval(const vector<A> &poly, const A x);
+    protected:
+        A eval(const vector<A> &poly, A x);
 
-        R decode(void *sk, E x);
+        virtual R decode(void *sk, const E &x) = 0;
 
-        E encode(void *pk, R x);
+        virtual E encode(void *pk, const R &x) = 0;
 
-        E encode(void *pk, A x);
+        virtual E encode(void *pk, const A &x) = 0;
 
-        bool is_unit(R x);
+        virtual A multiply_inplace(A &a1, const A &a2) = 0;
+
+        virtual R multiply_inplace(R &r, const A &a) = 0;
+
+        virtual R multiply_inplace(R &r1, const R &r2) = 0;
+
+        virtual A add_inplace(A &a1, const A &a2) = 0;
+
+        virtual R add_inplace(R &r1, const R &r2) = 0;
+
+        virtual R subtract_inplace(R &r1, const R &r2) = 0;
+
+        virtual bool is_unit(const R &x) = 0;
+
+        virtual bool is_zero(const A &a) = 0;
+
+        virtual bool is_zero(const R &r) = 0;
+
+        virtual bool is_equal(const A &a1, const A &a2) = 0;
+
+        virtual bool is_equal(const R &r1, const R &r2) = 0;
     };
 
     template<typename R, typename A>

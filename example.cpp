@@ -1,10 +1,11 @@
-#include <cmath>
 #include <iostream>
 
 #include "seal/seal.h"
 #include "ring.h"
 #include "ring_snark.h"
 #include "poly_arith.h"
+#include "seal_prover.h"
+#include "seal_verifier.h"
 
 using namespace std;
 using namespace seal;
@@ -92,8 +93,10 @@ bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<Se
     vector<R> values{c1, c2, c3, c4, c5, c6};
     SnarkParameters<R, A> snarkParameters(context, values, indices_io, indices_mid, v, w, y, t, h);
 
-    Prover<E, R, A> prover;
-    Verifier<E, R, A> verifier(snarkParameters, params);
+    SealProver prover;
+//    Verifier<E, R, A> verifier(snarkParameters, params);
+    SealVerifier verifier(snarkParameters, params);
+
 
     // TODO
     const R &alpha(c1);
@@ -103,7 +106,6 @@ bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<Se
 
     R r_v(c3);
     const R &r_w(c4);
-    //r_v.multiply_scalar_inplace(0);
     R r_y(r_v);
     r_y.multiply_inplace(r_w);
 
