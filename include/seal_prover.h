@@ -7,17 +7,20 @@
 #include "poly_arith.h"
 
 using namespace rinocchio;
+using E = SealPoly;
+using R = SealPoly;
+using A = uint64_t;
 
-class SealProver : public Prover<SealPoly, SealPoly, uint64_t> {
+class SealProver : public Prover<E, R, A> {
 public:
     SealProver() = default;
 
 protected:
-    SealPoly multiply_inplace(SealPoly &e, const uint64_t &a) override;
+    R multiply_inplace(R &r, const A &a) override;
 
-    SealPoly multiply_inplace(SealPoly &e, const SealPoly &r) override;
+    E multiply_inplace(E &e, const R &r) override;
 
-    SealPoly add_inplace(SealPoly &e1, const SealPoly &e2) override;
+    E add_inplace(E &e1, const E &e2) override;
 };
 
 #endif //RINOCCHIO_SEAL_PROVER_H

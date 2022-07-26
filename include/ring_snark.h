@@ -113,9 +113,7 @@ namespace rinocchio {
     protected:
         E inner_prod_enc_ring(const vector<R> &poly, const vector<E> &values);
 
-        E inner_prod_enc_exc(const vector<A> &poly, const vector<E> &values);
-
-        virtual E multiply_inplace(E &e, const A &a) = 0;
+        virtual R multiply_inplace(R &r, const A& a) = 0;
 
         virtual E multiply_inplace(E &e, const R &r) = 0;
 

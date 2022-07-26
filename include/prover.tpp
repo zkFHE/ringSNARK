@@ -3,31 +3,80 @@ using namespace rinocchio;
 
 template<typename E, typename R, typename A>
 Proof<E> Prover<E, R, A>::prove(SnarkParameters<R, A> params, CRS<E> crs) {
-    // Evaluate V_k, V_k', ..., Y_k, Y_k'
-    vector<E> v_s, w_s, y_s, v_alpha_s, w_alpha_s, y_alpha_s;
-    v_s.reserve(params.num_mid);
-    v_alpha_s.reserve(params.num_mid);
-    w_s.reserve(params.num_mid);
-    w_alpha_s.reserve(params.num_mid);
-    y_s.reserve(params.num_mid);
-    y_alpha_s.reserve(params.num_mid);
-    for (const size_t k: params.indices_mid) {
-        v_s.push_back(inner_prod_enc_exc(params.v[k], crs.s_pows));
-        w_s.push_back(inner_prod_enc_exc(params.w[k], crs.s_pows));
-        y_s.push_back(inner_prod_enc_exc(params.y[k], crs.s_pows));
+    size_t k = params.indices_mid[0];
+    size_t i = 0;
 
-        v_alpha_s.push_back(inner_prod_enc_exc(params.v[k], crs.alpha_s_pows));
-        w_alpha_s.push_back(inner_prod_enc_exc(params.w[k], crs.alpha_s_pows));
-        y_alpha_s.push_back(inner_prod_enc_exc(params.y[k], crs.alpha_s_pows));
+    // Init A, A'
+    R coeff = R(params.values[k]);
+    coeff = multiply_inplace(coeff, params.v[k][i]);
+
+    E a(crs.s_pows[i]);
+    a = multiply_inplace(a, coeff);
+
+    E a_alpha(crs.alpha_s_pows[i]);
+    a_alpha = multiply_inplace(a_alpha, coeff);
+
+    // B, B'
+    coeff = R(params.values[k]);
+    coeff = multiply_inplace(coeff, params.w[k][i]);
+
+    E b(crs.s_pows[i]);
+    b = multiply_inplace(b, coeff);
+
+    E b_alpha(crs.alpha_s_pows[i]);
+    b_alpha = multiply_inplace(b_alpha, coeff);
+
+    // C, C'
+    coeff = R(params.values[k]);
+    coeff = multiply_inplace(coeff, params.y[k][i]);
+
+    E c(crs.s_pows[i]);
+    c = multiply_inplace(c, coeff);
+
+    E c_alpha(crs.alpha_s_pows[i]);
+    c_alpha = multiply_inplace(c_alpha, coeff);
+
+    for (size_t i_k = 0; i_k < params.indices_mid.size(); i_k++) {
+        size_t deg = params.v[k].size();
+        k = params.indices_mid[i_k];
+        for (i = (i_k == 0) ? 1 : 0; i < deg; i++) {
+            // A, A'
+            coeff = R(params.values[k]);
+            coeff = multiply_inplace(coeff, params.v[k][i]);
+
+            E tmp(crs.s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(a, tmp);
+
+            tmp = E(crs.alpha_s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(a_alpha, tmp);
+
+            // B, B'
+            coeff = R(params.values[k]);
+            coeff = multiply_inplace(coeff, params.w[k][i]);
+
+            tmp = E(crs.s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(b, tmp);
+
+            tmp = E(crs.alpha_s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(b_alpha, tmp);
+
+            // C, C'
+            coeff = R(params.values[k]);
+            coeff = multiply_inplace(coeff, params.y[k][i]);
+
+            tmp = E(crs.s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(c, tmp);
+
+            tmp = E(crs.alpha_s_pows[i]);
+            tmp = multiply_inplace(tmp, coeff);
+            add_inplace(c_alpha, tmp);
+        }
     }
-
-    // Evaluate A, A', ..., C, C'
-    E a = inner_prod_enc_ring(params.values_mid, v_s);
-    E a_alpha = inner_prod_enc_ring(params.values_mid, v_alpha_s);
-    E b = inner_prod_enc_ring(params.values_mid, w_s);
-    E b_alpha = inner_prod_enc_ring(params.values_mid, w_alpha_s);
-    E c = inner_prod_enc_ring(params.values_mid, y_s);
-    E c_alpha = inner_prod_enc_ring(params.values_mid, y_alpha_s);
 
     // Compute D, E
     E d = inner_prod_enc_ring(params.h.coeffs, crs.s_pows);
@@ -49,21 +98,6 @@ E Prover<E, R, A>::inner_prod_enc_ring(const vector<R> &poly, const vector<E> &v
         E tmp(values[j]);
         tmp = multiply_inplace(tmp, poly[j]);
         res = add_inplace(res, tmp);
-    }
-    return res;
-}
-
-template<typename E, typename R, typename A>
-E Prover<E, R, A>::inner_prod_enc_exc(const vector<A> &poly, const vector<E> &values) {
-    assert(poly.size() == values.size());
-    E res(values[0]);
-    res = multiply_inplace(res, poly[0]);
-    for (size_t j = 1; j < values.size(); j++) {
-        if (poly[j] != 0) {
-            E tmp(values[j]);
-            tmp = multiply_inplace(tmp, poly[j]);
-            res = add_inplace(res, tmp);
-        }
     }
     return res;
 }

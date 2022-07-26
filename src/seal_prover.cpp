@@ -1,16 +1,16 @@
 #include "seal_prover.h"
 
-SealPoly SealProver::multiply_inplace(SealPoly &e, const uint64_t &a) {
-    e.multiply_scalar_inplace(a);
-    return e;
+R SealProver::multiply_inplace(R &r, const A &a) {
+    r.multiply_scalar_inplace(a);
+    return r;
 }
 
-SealPoly SealProver::multiply_inplace(SealPoly &e, const SealPoly &r) {
+E SealProver::multiply_inplace(E &e, const R &r) {
     e.multiply_inplace(r);
     return e;
 }
 
-SealPoly SealProver::add_inplace(SealPoly& e1, const SealPoly& e2) {
+E SealProver::add_inplace(E& e1, const E& e2) {
     e1.add_inplace(e2);
     return e1;
 }
