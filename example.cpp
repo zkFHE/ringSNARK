@@ -73,12 +73,11 @@ bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<Se
     min_r5_min_r6 = (q1 + min_r5_min_r6 - r6) % q1;
     vector<A> t{r5_r6, min_r5_min_r6, 1};
 
-    //// h: [4 * ((r6-r5)^-1)^2 * (c1+c2-c3) * (c5-c4)]
-    // h: ((r6-r5)^-1)^2 * (c1+c2-c3) * (c1+c2-c4)
+    // h: [((r6-r5)^-1)^2 * (c1+c2-c3) * (c5-c4)]
     R h0(c1);
     h0.add_inplace(c2);
-    R tmp(h0);
     h0.subtract_inplace(c3);
+    R tmp(c5);
     tmp.subtract_inplace(c4);
 
     h0.multiply_inplace(tmp);
