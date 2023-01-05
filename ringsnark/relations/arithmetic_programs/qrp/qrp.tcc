@@ -315,6 +315,9 @@ namespace ringsnark {
                                     const RingT &d2,
                                     const RingT &d3,
                                     const std::vector<RingT> &coefficients_for_ABCs,
+                                    const std::vector<RingT> &coefficients_for_A_mid,
+                                    const std::vector<RingT> &coefficients_for_B_mid,
+                                    const std::vector<RingT> &coefficients_for_C_mid,
                                     std::vector<RingT> &&coefficients_for_H) :
             num_variables_(num_variables),
             degree_(degree),
@@ -323,6 +326,9 @@ namespace ringsnark {
             d2(d2),
             d3(d3),
             coefficients_for_ABCs(coefficients_for_ABCs),
+            coefficients_for_A_mid(coefficients_for_A_mid),
+            coefficients_for_B_mid(coefficients_for_B_mid),
+            coefficients_for_C_mid(coefficients_for_C_mid),
             coefficients_for_H(std::move(coefficients_for_H)) {}
 
 

@@ -95,7 +95,7 @@ namespace ringsnark {
         At.resize(cs.num_variables() + 1, RingT::zero());
         Bt.resize(cs.num_variables() + 1, RingT::zero());
         Ct.resize(cs.num_variables() + 1, RingT::zero());
-        Ht.reserve(domain->m + 1);
+        Ht.reserve(domain->m + 1); // TODO: do we need that many monomials? Shouldn't this be d (QAP degree) instead?
 
         const RingT Zt = domain->compute_vanishing_polynomial(t);
 
@@ -186,47 +186,39 @@ namespace ringsnark {
         /* sanity check */
         assert(cs.is_satisfied(primary_input, auxiliary_input));
 
-        const std::shared_ptr<evaluation_domain<RingT>>
-                domain = get_evaluation_domain<RingT>(
-                cs.num_constraints() + cs.num_inputs() + 1);
+//        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints() + cs.num_inputs() + 1);
+        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         r1cs_variable_assignment<RingT> full_variable_assignment = primary_input;
         full_variable_assignment.insert(full_variable_assignment.end(), auxiliary_input.begin(), auxiliary_input.end());
 
 
-        // Compute coefficiens for A_mid, B_mid, C_mid
-        std::vector<RingT> a_mid(domain->m, RingT::zero()), b_mid(domain->m, RingT::zero()), c_mid(domain->m,
-                                                                                                   RingT::zero());
-        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
-            a_mid[i + cs.num_constraints()] = (i > 0 ? full_variable_assignment[i - 1] : RingT::one());
-        }
+        /* Compute coefficients for A_mid, B_mid, C_mid */
+        std::vector<RingT> a_mid(domain->m, RingT::zero()), // a_mid[k] =
+                b_mid(domain->m, RingT::zero()),
+                c_mid(domain->m, RingT::zero());
         /* account for all other constraints */
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
-            a_mid[i] += cs.constraints[i].a.evaluate(auxiliary_input);
-            b_mid[i] += cs.constraints[i].b.evaluate(auxiliary_input);
-            c_mid[i] += cs.constraints[i].c.evaluate(auxiliary_input);
+            a_mid[i] += cs.constraints[i].a.evaluate(full_variable_assignment);
+            b_mid[i] += cs.constraints[i].b.evaluate(full_variable_assignment);
+            c_mid[i] += cs.constraints[i].c.evaluate(full_variable_assignment);
         }
 
         // Compute coefficients for vanishing polynomial Z
         std::vector<RingT> Z = domain->vanishing_polynomial();
 
-
         // Compute coefficients for H
         std::vector<RingT> aA(domain->m, RingT::zero()), aB(domain->m, RingT::zero()), aC(domain->m, RingT::zero());
 
-        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
-            aA[i + cs.num_constraints()] = (i > 0 ? full_variable_assignment[i - 1] : RingT::one());
-        }
+//        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
+//            aA[i + cs.num_constraints()] = (i > 0 ? full_variable_assignment[i - 1] : RingT::one());
+//        }
         /* account for all other constraints */
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
             aA[i] += cs.constraints[i].a.evaluate(full_variable_assignment);
             aB[i] += cs.constraints[i].b.evaluate(full_variable_assignment);
             aC[i] += cs.constraints[i].c.evaluate(full_variable_assignment);
         }
-
-//        domain->iFFT(aA);
-//
-//        domain->iFFT(aB);
 
         std::vector<RingT> coefficients_for_H(domain->m + 1, RingT::zero());
 #ifdef MULTICORE
@@ -238,10 +230,6 @@ namespace ringsnark {
         }
         coefficients_for_H[0] -= d3;
         domain->add_poly_Z(d1 * d2, coefficients_for_H);
-
-//        domain->cosetFFT(aA, RingT::multiplicative_generator);
-//
-//        domain->cosetFFT(aB, RingT::multiplicative_generator);
 
         // Compute coefficients of A*B - C
         // TODO: can we use 2*m-1 instead (even for FFT impl. as some later point)?
@@ -261,40 +249,14 @@ namespace ringsnark {
         }
         vector<RingT> H_tmp = interpolate(x, vwy);
         domain->divide_by_Z_on_coset(H_tmp);
-        assert(coefficients_for_H.size() == H_tmp.size());
 
-//        std::vector<RingT> &H_tmp = aA; // can overwrite aA because it is not used later
-//#ifdef MULTICORE
-//#pragma omp parallel for
-//#endif
-//        for (size_t i = 0; i < domain->m; ++i) {
-//            H_tmp[i] = aA[i] * aB[i];
-//        }
-//        std::vector<RingT>().swap(aB); // destroy aB
-
-
-//        domain->iFFT(aC);
-//
-//        domain->cosetFFT(aC, RingT::multiplicative_generator);
 
 #ifdef MULTICORE
 #pragma omp parallel for
 #endif
-//        for (size_t i = 0; i < domain->m; ++i) {
-//            H_tmp[i] = (H_tmp[i] - aC[i]);
-//        }
-
-//        domain->divide_by_Z_on_coset(H_tmp);
-//
-//        domain->icosetFFT(H_tmp, RingT::multiplicative_generator);
-
-#ifdef MULTICORE
-#pragma omp parallel for
-#endif
-        for (size_t i = 0; i < domain->m; ++i) {
+        for (size_t i = 0; i < std::min(coefficients_for_H.size(), H_tmp.size()); ++i) {
             coefficients_for_H[i] += H_tmp[i];
         }
-
 
         return qrp_witness<RingT>(cs.num_variables(),
                                   domain->m,

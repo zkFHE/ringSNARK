@@ -45,13 +45,11 @@ namespace ringsnark {
 
     template<typename RingT>
     vector<RingT> evaluation_domain<RingT>::vanishing_polynomial() const {
-        // Generate y[i] = Z(values[i]) (= 0 by construction), and interpolate to find coefficients
-        vector<RingT> y(m);
-        for (size_t i = 0; i < m; i++) {
-            y[i] = RingT::zero();
+        polynomial<RingT> Z_poly(vector<RingT>{-values[0], RingT::one()});
+        for (size_t i = 1; i < values.size(); i++) {
+            Z_poly *= polynomial<RingT>(vector<RingT>{-values[1], RingT::one()});
         }
-        vector<RingT> Z = interpolate(values, y);
-        return Z;
+        return Z_poly.data();
     }
 
     template<typename RingT>
@@ -73,22 +71,14 @@ namespace ringsnark {
     // TODO: not sure if we are technically dividing on coset, we might be using a misleading method name at the moment.
     template<typename RingT>
     void evaluation_domain<RingT>::divide_by_Z_on_coset(vector<RingT> &P) const {
-        vector<RingT> y(m);
-        for (size_t i = 0; i < m; i++) {
-            y[i] = RingT::zero();
-        }
-        vector<RingT> Z = interpolate(values, y);
-
-        P = divide(P, Z); // TODO: strip leading 0 coeffs
+        // implementation also normalizes P, i.e., strips zero higher coefficients
+        P = divide(P, vanishing_polynomial());
     }
 
     template<typename RingT>
-    shared_ptr<evaluation_domain<RingT>>
-
-    get_evaluation_domain(const size_t min_size) {
-        shared_ptr<evaluation_domain<RingT>>
-                shared_domain(new evaluation_domain<RingT>(min_size));
+    shared_ptr<evaluation_domain<RingT>> get_evaluation_domain(const size_t min_size) {
+        shared_ptr<evaluation_domain < RingT>>
+        shared_domain(new evaluation_domain<RingT>(min_size));
         return shared_domain;
     }
-
 }

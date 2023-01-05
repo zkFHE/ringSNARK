@@ -19,7 +19,8 @@ namespace ringsnark::rinocchio {
         // ({E(s^i)}_{i=0}^{num_mid}}, {E(alpha * s^i)}_{i=0}^{num_mid}}, {beta_prod}_{i=0}^{num_mid}, pk)
         // Ht holds the monomials {s^i}_{i=0}^m
 
-        vector<RingT> alpha_s_pows_ring(qrp_inst.Ht);
+        vector<RingT> s_pows_ring(qrp_inst.Ht.begin(), qrp_inst.Ht.begin() + cs.num_constraints() + 1);
+        vector<RingT> alpha_s_pows_ring(s_pows_ring);
         for (auto &s_i: alpha_s_pows_ring) {
             s_i *= alpha;
         }
@@ -34,26 +35,26 @@ namespace ringsnark::rinocchio {
             linchecks.push_back(lincheck);
         }
 
-        vector<EncT> s_pows = EncT::encode(sk_enc, qrp_inst.Ht),
+        vector<EncT> s_pows = EncT::encode(sk_enc, s_pows_ring),
                 alpha_s_pows = EncT::encode(sk_enc, alpha_s_pows_ring),
                 beta_prods = EncT::encode(sk_enc, linchecks);
 
-        proving_key<RingT, EncT> pk(cs, s_pows, alpha_s_pows, beta_prods, pk_enc);
-        verification_key<RingT, EncT> vk(pk, s, alpha, beta, r_v, r_w, r_y, sk_enc);
-        assert(pk.constraint_system.constraints.size() == 1);
-
-        ringsnark::rinocchio::keypair<RingT, EncT> keypair(pk, vk);
-        assert(keypair.pk.constraint_system.constraints.size() == 1);
-        return keypair;
+        auto pk = new proving_key<RingT, EncT>(cs, s_pows, alpha_s_pows, beta_prods, pk_enc);
+        auto vk = new verification_key<RingT, EncT>(*pk, s, alpha, beta, r_v, r_w, r_y, sk_enc);
+//        auto keypair = new ::ringsnark::rinocchio::keypair<RingT, EncT>(*pk, *vk);
+//        proving_key<RingT, EncT> pk(cs, s_pows, alpha_s_pows, beta_prods, pk_enc);
+//        verification_key<RingT, EncT> vk(pk, s, alpha, beta, r_v, r_w, r_y, sk_enc);
+//        assert(pk.constraint_system.constraints.size() == 1);
+//
+//        ringsnark::rinocchio::keypair<RingT, EncT> keypair(pk, vk);
+//        assert(keypair.pk.constraint_system.constraints.size() == 1);
+        return ::ringsnark::rinocchio::keypair<RingT, EncT>(*pk, *vk);
     }
 
     template<typename RingT, typename EncT>
     proof<RingT, EncT> prover(const proving_key<RingT, EncT> &pk,
                               const r1cs_primary_input<RingT> &primary_input,
                               const r1cs_auxiliary_input<RingT> &auxiliary_input) {
-        assert(pk.constraint_system.constraints.size() == 1);
-
-
 #ifdef DEBUG
         assert(pk.constraint_system.is_satisfied(primary_input, auxiliary_input));
 #endif
@@ -65,23 +66,63 @@ namespace ringsnark::rinocchio {
         const qrp_witness<RingT> qrp_wit = r1cs_to_qrp_witness_map(pk.constraint_system,
                                                                    primary_input, auxiliary_input, d1, d2, d3);
 
-        const vector<RingT> a_mid = qrp_wit.coefficients_for_A_mid,
-                b_mid = qrp_wit.coefficients_for_B_mid,
-                c_mid = qrp_wit.coefficients_for_C_mid,
-                z = qrp_wit.coefficients_for_Z,
+        const vector<EncT> A_query, B_query, C_query;
+        // A_query[k] = Enc(w_k * A_k(s)) = w_k * \sum_i A_{k,i} * Enc(s^i)
+
+
+        // TODO: this is highly non-optimized, skip all the zero-multiplication once indices are figured out
+        r1cs_variable_assignment<RingT> auxiliary_assignment(primary_input.size(), RingT::zero());
+        auxiliary_assignment.insert(auxiliary_assignment.end(), auxiliary_input.begin(), auxiliary_input.end());
+        auto cs = pk.constraint_system;
+        std::vector<RingT> a_mid, b_mid, c_mid;
+        a_mid.reserve(cs.num_constraints());
+        b_mid.reserve(cs.num_constraints());
+        c_mid.reserve(cs.num_constraints());
+        for (size_t i = 0; i < cs.num_constraints(); ++i) {
+            a_mid.push_back(cs.constraints[i].a.evaluate(auxiliary_assignment));
+            b_mid.push_back(cs.constraints[i].b.evaluate(auxiliary_assignment));
+            c_mid.push_back(cs.constraints[i].c.evaluate(auxiliary_assignment));
+        }
+
+//        EncT *A_enc = nullptr;
+//        for (size_t i = 0; i < pk.constraint_system.constraints.size(); i++) {
+//            const r1cs_constraint<RingT> constraint = pk.constraint_system.constraints[i];
+//            // TODO: check if the indices always conform to the ordering used here
+//            //  (0 -> constant 1-input, 1 -- num_inputs+1 -> public inputs, num_inputs+2 -- end -> private inputs
+//            for (const linear_term<RingT> &term: constraint.a.terms) {
+//                if (term.index > pk.constraint_system.num_inputs() + 1) {
+//                    size_t k = term.index - (pk.constraint_system.num_inputs() + 2);
+//                    RingT tmp = term.coeff * auxiliary_input[k];
+//                    if (A_enc) {
+//                        *A_enc += pk.s_pows[i] * tmp;
+//                    } else {
+//                        *A_enc = pk.s_pows[i] * tmp;
+//                    }
+//                }
+//            }
+//        }
+
+//        const vector<RingT> a_mid = qrp_wit.coefficients_for_A_mid,
+//                b_mid = qrp_wit.coefficients_for_B_mid,
+//                c_mid = qrp_wit.coefficients_for_C_mid;
+        const vector<RingT> z = qrp_wit.coefficients_for_Z,
                 h = qrp_wit.coefficients_for_H;
 
-        EncT a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(), a_mid.begin(), a_mid.end());
-        EncT alpha_a_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(), a_mid.begin(),
-                                                      a_mid.end());
-        EncT b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(), b_mid.begin(), b_mid.end());
-        EncT alpha_b_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(), b_mid.begin(),
-                                                      b_mid.end());
-        EncT c_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(), c_mid.begin(), c_mid.end());
-        EncT alpha_c_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(), c_mid.begin(),
-                                                      c_mid.end());
+        // s_pows, alpha_s_pows have length d+1, where d = cs.num_constraints() is the size of the QRP
+        EncT a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                a_mid.begin(), a_mid.end());
+        EncT alpha_a_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                      a_mid.begin(), a_mid.end());
+        EncT b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                b_mid.begin(), b_mid.end());
+        EncT alpha_b_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                      b_mid.begin(), b_mid.end());
+        EncT c_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                c_mid.begin(), c_mid.end());
+        EncT alpha_c_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                      c_mid.begin(), c_mid.end());
 
-        EncT z_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.begin() + z.size(), z.begin(), z.end());
+        EncT z_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(), z.begin(), z.end());
 
         // Add shift terms
         // TODO: add terms to coefficients_for_{A, B, C} directly, similarly to H
@@ -116,7 +157,7 @@ namespace ringsnark::rinocchio {
     template<typename RingT, typename EncT>
     bool verifier(const verification_key<RingT, EncT> &vk,
                   const r1cs_primary_input<RingT> &primary_input,
-                  const proof<RingT, EncT> &proof) {
+                  const proof <RingT, EncT> &proof) {
         RingT V_mid = EncT::decode(vk.sk_enc, proof.A);
         RingT V_mid_prime = EncT::decode(vk.sk_enc, proof.A_prime);
         RingT W_mid = EncT::decode(vk.sk_enc, proof.B);
@@ -153,13 +194,17 @@ namespace ringsnark::rinocchio {
         L += Y_mid * vk.r_y;
         L *= vk.beta;
 
+        // TODO: make this more efficient, and skip all zero-mults
+        vector<RingT> padded_primary_assignment(primary_input);
+        vector<RingT> zeros(vk.pk.constraint_system.auxiliary_input_size, RingT::zero());
+        padded_primary_assignment.insert(padded_primary_assignment.end(), zeros.begin(), zeros.end());
         RingT v_io_s = qrp_inst_eval.At[0], w_io_s = qrp_inst_eval.Bt[0], y_io_s = qrp_inst_eval.Ct[0];
         /* account for all other constraints */
         // TODO: or use the {At, Bt, Ct} members from qrp_inst_eval?
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
-            v_io_s += cs.constraints[i].a.evaluate(primary_input);
-            w_io_s += cs.constraints[i].b.evaluate(primary_input);
-            y_io_s += cs.constraints[i].c.evaluate(primary_input);
+            v_io_s += cs.constraints[i].a.evaluate(padded_primary_assignment);
+            w_io_s += cs.constraints[i].b.evaluate(padded_primary_assignment);
+            y_io_s += cs.constraints[i].c.evaluate(padded_primary_assignment);
         }
 
         // P = (v_io(s) + V_mid) * (w_io(s) + W_mid) - (y_io(s) + Y_mid)

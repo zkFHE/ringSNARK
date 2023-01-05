@@ -17,41 +17,34 @@
 
 namespace {
     template<typename T>
-    class InterpolationTest : public testing::Test {
-
+    class DivisionTest : public testing::Test {
     };
 
     using Types = ::testing::Types<PrimitiveWrapper<double>, ringsnark::seal::RingElem>;
-    TYPED_TEST_SUITE(InterpolationTest, Types);
+    TYPED_TEST_SUITE(DivisionTest, Types);
 
-    TYPED_TEST(InterpolationTest, TestInterpolation) {
-        size_t n = 8;
-        vector<TypeParam> coeffs(n);
+    TYPED_TEST(DivisionTest, TestDivision) {
+        size_t n = 110;
+
         vector<TypeParam> x(n);
-        vector<TypeParam> y(n);
+        vector<TypeParam> quotient(n);
         for (size_t i = 0; i < n; i++) {
-            coeffs[i] = (i == 0) ? TypeParam::zero() : coeffs[i - 1] + TypeParam::one();
-            x[i] = TypeParam(i);
-        }
-        for (size_t i = 0; i < n; i++) {
-            y[i] = eval(coeffs, x[i]);
+            x[i] = TypeParam(2 * i + 1); //TypeParam::random_element();
+            quotient[i] = TypeParam(i + 1); //TypeParam::random_exceptional_element();
         }
 
-        vector<TypeParam> coeffs_interpolated = interpolate<TypeParam>(x, y);
-        vector<TypeParam> y_interpolated(n);
-        for (size_t i = 0; i < n; i++) {
-            y_interpolated[i] = eval(coeffs_interpolated, x[i]);
-        }
+        vector<TypeParam> y = multiply(quotient, x);
 
+        vector<TypeParam> q = divide(y, x);
+
+        EXPECT_LE(q.size(), quotient.size());
+        while (q.size() < quotient.size()) {
+            q.push_back(TypeParam::zero());
+        }
         for (int i = 0; i < n; i++) {
-            EXPECT_EQ(y[i], y_interpolated[i]);
-        }
-
-        for (int i = 0; i < n; i++) {
-            EXPECT_EQ(coeffs[i], coeffs_interpolated[i]);
+            EXPECT_EQ(q[i], quotient[i]);
         }
     }
-
 }
 
 int main(int argc, char **argv) {

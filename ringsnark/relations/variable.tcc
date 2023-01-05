@@ -225,7 +225,7 @@ namespace ringsnark {
     RingT linear_combination<RingT>::evaluate(const std::vector<RingT> &assignment) const {
         RingT acc = RingT::zero();
         for (auto &lt: terms) {
-            acc += (lt.index == 0 ? RingT::one() : assignment[lt.index - 1]) * lt.coeff;
+            acc += (lt.index == 0 ? RingT::one() : assignment.at(lt.index - 1)) * lt.coeff;
         }
         return acc;
     }
@@ -410,57 +410,24 @@ namespace ringsnark {
     }
 
     template<typename RingT>
-    linear_combination<RingT>::linear_combination(const std::vector<linear_term<RingT>
-
-    > &all_terms) {
-        if (all_terms.
-
-                empty()
-
-                ) {
+    linear_combination<RingT>::linear_combination(const std::vector<linear_term<RingT>> &all_terms) {
+        if (all_terms.empty()) {
             return;
         }
 
         terms = all_terms;
-        std::sort(terms
-                          .
-
-                                  begin(), terms
-
-                          .
-
-                                  end(),
-
-                  [](
-                          linear_term<RingT> a, linear_term<RingT>
-                  b) {
-                      return a.index < b.
-                              index;
-                  });
+        std::sort(terms.begin(), terms.end(),
+                  [](linear_term<RingT> a, linear_term<RingT> b) { return a.index < b.index; });
 
         auto result_it = terms.begin();
-        for (
-                auto it = ++terms.begin();
-                it != terms.
-
-                        end();
-
-                ++it) {
+        for (auto it = ++terms.begin(); it != terms.end(); ++it) {
             if (it->index == result_it->index) {
-                result_it->coeff += it->
-                        coeff;
+                result_it->coeff += it->coeff;
             } else {
-                *(++result_it) = *
-                        it;
+                *(++result_it) = *it;
             }
         }
-        terms.
-                resize((result_it
-                        - terms.
-
-                begin()
-
-                       ) + 1);
+        terms.resize((result_it - terms.begin()) + 1);
     }
 
 } // ringsnark

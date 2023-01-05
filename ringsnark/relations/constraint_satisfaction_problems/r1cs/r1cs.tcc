@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cassert>
 #include <set>
-#include <ringsnark/relations/variable.hpp>
 #include "r1cs.hpp"
 
 namespace ringsnark {
@@ -30,16 +29,13 @@ namespace ringsnark {
     r1cs_constraint<RingT>::r1cs_constraint(const linear_combination<RingT> &a,
                                             const linear_combination<RingT> &b,
                                             const linear_combination<RingT> &c) :
-            a(a), b(b), c(c) {
-    }
+            a(a), b(b), c(c) {}
 
     template<typename RingT>
     r1cs_constraint<RingT>::r1cs_constraint(const std::initializer_list<linear_combination<RingT> > &A,
                                             const std::initializer_list<linear_combination<RingT> > &B,
                                             const std::initializer_list<linear_combination<RingT> > &C) {
-        for (auto lc_A: A) {
-            a.terms.insert(a.terms.end(), lc_A.terms.begin(), lc_A.terms.end());
-        }
+        for (auto lc_A: A) { a.terms.insert(a.terms.end(), lc_A.terms.begin(), lc_A.terms.end()); }
         for (auto lc_B: B) { b.terms.insert(b.terms.end(), lc_B.terms.begin(), lc_B.terms.end()); }
         for (auto lc_C: C) { c.terms.insert(c.terms.end(), lc_C.terms.begin(), lc_C.terms.end()); }
     }

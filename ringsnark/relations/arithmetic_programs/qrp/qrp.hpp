@@ -64,18 +64,18 @@ namespace ringsnark {
         std::vector<std::map<size_t, RingT> > C;
 
         qrp_instance(const std::shared_ptr<evaluation_domain<RingT> > &domain,
-                     const size_t num_variables,
-                     const size_t degree,
-                     const size_t num_inputs,
+                     size_t num_variables,
+                     size_t degree,
+                     size_t num_inputs,
                      const std::vector<std::map<size_t, RingT> > &A_in_Lagrange_basis,
                      const std::vector<std::map<size_t, RingT> > &B_in_Lagrange_basis,
                      const std::vector<std::map<size_t, RingT> > &C_in_Lagrange_basis
         );
 
         qrp_instance(const std::shared_ptr<evaluation_domain<RingT> > &domain,
-                     const size_t num_variables,
-                     const size_t degree,
-                     const size_t num_inputs,
+                     size_t num_variables,
+                     size_t degree,
+                     size_t num_inputs,
                      std::vector<std::map<size_t, RingT> >
                      &&A_in_Lagrange_basis,
                      std::vector<std::map<size_t, RingT> > &&B_in_Lagrange_basis,
@@ -84,17 +84,17 @@ namespace ringsnark {
 
         qrp_instance(const qrp_instance<RingT> &other) = default;
 
-        qrp_instance(qrp_instance<RingT> &&other) = default;
+        qrp_instance(qrp_instance<RingT> &&other) noexcept = default;
 
         qrp_instance &operator=(const qrp_instance<RingT> &other) = default;
 
-        qrp_instance &operator=(qrp_instance<RingT> &&other) = default;
+        qrp_instance &operator=(qrp_instance<RingT> &&other) noexcept = default;
 
-        size_t num_variables() const;
+        [[nodiscard]] size_t num_variables() const;
 
-        size_t degree() const;
+        [[nodiscard]] size_t degree() const;
 
-        size_t num_inputs() const;
+        [[nodiscard]] size_t num_inputs() const;
 
         bool is_satisfied(const qrp_witness<RingT> &witness) const;
     };
@@ -127,9 +127,9 @@ namespace ringsnark {
         RingT Zt;
 
         qrp_instance_evaluation(const std::shared_ptr<evaluation_domain<RingT> > &domain,
-                                const size_t num_variables,
-                                const size_t degree,
-                                const size_t num_inputs,
+                                size_t num_variables,
+                                size_t degree,
+                                size_t num_inputs,
                                 const RingT &t,
                                 const std::vector<RingT> &At,
                                 const std::vector<RingT> &Bt,
@@ -139,9 +139,9 @@ namespace ringsnark {
         );
 
         qrp_instance_evaluation(const std::shared_ptr<evaluation_domain<RingT> > &domain,
-                                const size_t num_variables,
-                                const size_t degree,
-                                const size_t num_inputs,
+                                size_t num_variables,
+                                size_t degree,
+                                size_t num_inputs,
                                 const RingT &t,
                                 std::vector<RingT>
                                 &&At,
@@ -154,17 +154,17 @@ namespace ringsnark {
 
         qrp_instance_evaluation(const qrp_instance_evaluation<RingT> &other) = default;
 
-        qrp_instance_evaluation(qrp_instance_evaluation<RingT> &&other) = default;
+        qrp_instance_evaluation(qrp_instance_evaluation<RingT> &&other) noexcept = default;
 
         qrp_instance_evaluation &operator=(const qrp_instance_evaluation<RingT> &other) = default;
 
-        qrp_instance_evaluation &operator=(qrp_instance_evaluation<RingT> &&other) = default;
+        qrp_instance_evaluation &operator=(qrp_instance_evaluation<RingT> &&other) noexcept = default;
 
-        size_t num_variables() const;
+        [[nodiscard]] size_t num_variables() const;
 
-        size_t degree() const;
+        [[nodiscard]] size_t degree() const;
 
-        size_t num_inputs() const;
+        [[nodiscard]] size_t num_inputs() const;
 
         bool is_satisfied(const qrp_witness<RingT> &witness) const;
     };
@@ -189,9 +189,9 @@ namespace ringsnark {
         std::vector<RingT> coefficients_for_Z;
         std::vector<RingT> coefficients_for_H;
 
-        qrp_witness(const size_t num_variables,
-                    const size_t degree,
-                    const size_t num_inputs,
+        qrp_witness(size_t num_variables,
+                    size_t degree,
+                    size_t num_inputs,
                     const RingT &d1,
                     const RingT &d2,
                     const RingT &d3,
@@ -203,28 +203,31 @@ namespace ringsnark {
                     const std::vector<RingT> &coefficients_for_H
         );
 
-        qrp_witness(const size_t num_variables,
-                    const size_t degree,
-                    const size_t num_inputs,
+        qrp_witness(size_t num_variables,
+                    size_t degree,
+                    size_t num_inputs,
                     const RingT &d1,
                     const RingT &d2,
                     const RingT &d3,
                     const std::vector<RingT> &coefficients_for_ABCs,
+                    const std::vector<RingT> &coefficients_for_A_mid,
+                    const std::vector<RingT> &coefficients_for_B_mid,
+                    const std::vector<RingT> &coefficients_for_C_mid,
                     std::vector<RingT> &&coefficients_for_H);
 
         qrp_witness(const qrp_witness<RingT> &other) = default;
 
-        qrp_witness(qrp_witness<RingT> &&other) = default;
+        qrp_witness(qrp_witness<RingT> &&other) noexcept = default;
 
         qrp_witness &operator=(const qrp_witness<RingT> &other) = default;
 
-        qrp_witness &operator=(qrp_witness<RingT> &&other) = default;
+        qrp_witness &operator=(qrp_witness<RingT> &&other) noexcept = default;
 
-        size_t num_variables() const;
+        [[nodiscard]] size_t num_variables() const;
 
-        size_t degree() const;
+        [[nodiscard]] size_t degree() const;
 
-        size_t num_inputs() const;
+        [[nodiscard]] size_t num_inputs() const;
     };
 
 } // ringsnark

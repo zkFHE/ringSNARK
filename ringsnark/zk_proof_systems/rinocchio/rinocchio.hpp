@@ -5,7 +5,9 @@
 #include <set>
 #include "seal/seal.h"
 #include <ringsnark/zk_proof_systems/r1cs_ppzksnark.hpp>
-#include <ringsnark/relations/arithmetic_programs/qrp/qrp.hpp>
+#include <ringsnark/common/data_structures/sparse_vector.hpp>
+
+using std::vector;
 
 namespace ringsnark::rinocchio {
     template<typename RingT, typename EncT>
@@ -14,8 +16,8 @@ namespace ringsnark::rinocchio {
 
     public:
         const r1cs_constraint_system<RingT> constraint_system;
-        const vector<EncT> s_pows, alpha_s_pows;    // size = |I_mid|
-        const vector<EncT> beta_prods;               // size = |I_mid|
+        const vector<EncT> s_pows, alpha_s_pows;
+        const vector<EncT> beta_prods;
         const PublicKey pk_enc;
 
         proving_key(const ringsnark::r1cs_constraint_system<RingT> &constraint_system,
@@ -27,13 +29,7 @@ namespace ringsnark::rinocchio {
                 s_pows(sPows),
                 alpha_s_pows(alphaSPows),
                 beta_prods(betaProds),
-                pk_enc(pkEnc) {
-            assert(this->constraint_system.primary_input_size == constraint_system.primary_input_size);
-            assert(this->constraint_system.auxiliary_input_size == constraint_system.auxiliary_input_size);
-            assert(this->constraint_system.constraints == constraint_system.constraints);
-
-//            assert(this->constraint_system == constraint_system);
-        }
+                pk_enc(pkEnc) {}
 
         [[nodiscard]] size_t size_in_bits() const override {
             return s_pows.size() * s_pows[0].size_in_bits()
@@ -118,9 +114,6 @@ namespace ringsnark::rinocchio {
         }
 
     };
-
-//    template<typename RingT, typename EncT>
-//    keypair<RingT, EncT> generator(const r1cs_constraint_system<RingT> &cs);
 }  // namespace ringsnark
 
 #include "rinocchio.tcc"

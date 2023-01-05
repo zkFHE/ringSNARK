@@ -9,6 +9,7 @@ using std::vector;
  *
  * @tparam RingT
  * @param x vector of n evaluation points
+ * @param x vector of n evaluation points
  * @param y vector of n evaluations y[i] = f(x[i]), for a degree-(n-1) polynomial f
  * @return coefficients `coeffs' of f, such that y[i] = sum_j coeffs[j] * x[i]^j
  */
@@ -17,6 +18,12 @@ vector<RingT> interpolate(const vector<RingT> &x, const vector<RingT> &y);
 
 template<typename RingT>
 RingT eval(const vector<RingT> &coeffs, const RingT &x);
+
+template<typename RingT>
+vector<RingT> multiply(const vector<RingT> &x, const vector<RingT> &y);
+
+template<typename RingT>
+vector<RingT> add(const vector<RingT> &x, const vector<RingT> &y);
 
 /**
  * Return quotient of polynomial division of `numerator' by `denominator' over the ring RingT.

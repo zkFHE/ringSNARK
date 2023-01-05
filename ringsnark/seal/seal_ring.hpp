@@ -4,43 +4,43 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <variant>
+#include <memory>
 #include "seal/seal.h"
+#include "seal/util/rlwe.h"
 #include "poly_arith.h"
 
-namespace ringsnark::seal {
-    enum RING_ELEM_TYPE : size_t {
-        SCALAR = 0,
-        POLY = 1
-    };
+using std::vector;
 
+namespace ringsnark::seal {
     class RingElem {
     protected:
+        using Scalar = uint64_t;
+        using Poly = polytools::SealPoly;
+
         // TODO: try and turn this into a template parameter (which would probably require building a constexpr SEALContext)
         inline static ::seal::SEALContext *context = nullptr;
+        std::variant<Poly, Scalar> value = (uint64_t) 0;
+        inline static std::shared_ptr<::seal::UniformRandomGenerator> prng = nullptr;
+
+        [[nodiscard]] Scalar &get_scalar();
+
     public:
-        polytools::SealPoly *poly = nullptr;
-        uint64_t value = 0;
-        RING_ELEM_TYPE type;
 
         /*
          * Constructors
          */
         RingElem();
 
-        RingElem(const RingElem &other);
+        RingElem(const RingElem &other) = default;
 
         RingElem(RingElem &&other) = default;
 
         RingElem &operator=(const RingElem &other) = default;
 
-        RingElem &operator=(RingElem &&other) = default;
-
         virtual ~RingElem() = default;
 
         explicit RingElem(uint64_t value);
-
-        RingElem(::seal::SEALContext &context_, ::seal::Plaintext &plaintext,
-                 const ::seal::parms_id_type *parms_id_ptr);
 
         explicit RingElem(const polytools::SealPoly &poly);
 
@@ -86,14 +86,31 @@ namespace ringsnark::seal {
             return RingElem(rand);
         }
 
+        inline static RingElem random_element() {
+            if (prng == nullptr) {
+                prng = ::seal::UniformRandomGeneratorFactory::DefaultFactory()->create();
+            }
+
+            auto parms = get_context().get_context_data(get_context().first_parms_id())->parms();
+            vector<uint64_t> coeffs(parms.poly_modulus_degree() * parms.coeff_modulus().size());
+            ::seal::util::sample_poly_uniform(prng, parms, coeffs.data());
+            return RingElem(polytools::SealPoly(get_context(), coeffs, get_context().first_parms_id()));
+        }
+
         static RingElem random_invertible_element() {
-            // TODO
-            return RingElem::one();
+            RingElem res;
+            do {
+                res = random_element();
+            } while (!res.is_invertible());
+            return res;
         }
 
         static RingElem random_nonzero_element() {
-            // TODO
-            return RingElem::one();
+            RingElem res;
+            do {
+                res = random_element();
+            } while (res.is_zero());
+            return res;
         }
 
         /*
@@ -101,7 +118,11 @@ namespace ringsnark::seal {
          */
         [[nodiscard]] size_t size_in_bits() const;
 
-        bool is_zero() const;
+        [[nodiscard]] bool is_zero() const;
+
+        [[nodiscard]] bool is_poly() const;
+
+        [[nodiscard]] bool is_scalar() const;
 
         void negate_inplace();
 
@@ -111,9 +132,11 @@ namespace ringsnark::seal {
             return res;
         }
 
+        bool is_invertible() const noexcept;
+
         void invert_inplace();
 
-        inline RingElem inverse() const {
+        [[nodiscard]] inline RingElem inverse() const {
             RingElem res(*this);
             res.invert_inplace();
             return res;
@@ -132,19 +155,26 @@ namespace ringsnark::seal {
 
         RingElem &to_poly_inplace();
 
-        RingElem &to_poly() const {
-            RingElem *res = new RingElem(*this);
+        [[nodiscard]] RingElem &to_poly() const {
+            auto *res = new RingElem(*this);
             res->to_poly_inplace();
             return *res;
         }
 
-        RingElem to_scalar() const;
+        [[nodiscard]] RingElem to_scalar() const;
 
-        size_t hash() const;
+        [[nodiscard]] size_t hash() const;
 
-        static void throw_invalid_types() {
-            throw std::invalid_argument("invalid types");
-        }
+        class invalid_ring_elem_types : std::invalid_argument {
+        public:
+            explicit invalid_ring_elem_types() : invalid_argument("invalid types") {}
+        };
+
+        [[nodiscard]] Scalar get_scalar() const;
+
+        [[nodiscard]] Poly get_poly() const;
+
+        [[nodiscard]] Poly &get_poly();
     };
 
 
@@ -154,13 +184,11 @@ namespace ringsnark::seal {
         return res;
     }
 
-
     inline RingElem operator-(const RingElem &lhs, const RingElem &rhs) {
         RingElem res(lhs);
         res -= rhs;
         return res;
     }
-
 
     inline RingElem operator*(const RingElem &lhs, const RingElem &rhs) {
         RingElem res(lhs);
@@ -168,13 +196,11 @@ namespace ringsnark::seal {
         return res;
     }
 
-
     inline RingElem operator/(const RingElem &lhs, const RingElem &rhs) {
         RingElem res(lhs);
         res /= rhs;
         return res;
     }
-
 
     bool operator==(const RingElem &lhs, const RingElem &rhs);
 
@@ -186,45 +212,89 @@ namespace ringsnark::seal {
 
     class EncodingElem {
     protected:
-        inline static ::seal::SEALContext *context = nullptr;
-        inline static ::seal::BatchEncoder *encoder = nullptr;
-        inline static ::seal::Evaluator *evaluator = nullptr;
+        inline static std::vector<::seal::SEALContext> contexts;
+        // Use pointers instead of values as an ugly hack.
+        // std::vectors requires a copy-constructor to be available, whereas SEAL deletes them for BatchEncoder and Evaluator
+        inline static std::vector<::seal::BatchEncoder *> encoders;
+        inline static std::vector<::seal::Evaluator *> evaluators;
 
         std::vector<::seal::Ciphertext> ciphertexts;
+
+        EncodingElem() = delete;
+
     public:
         using PublicKey = nullptr_t; // No keying material needed to evaluate affine combinations of ciphertexts
-        using SecretKey = ::seal::SecretKey;
+        using SecretKey = vector<::seal::SecretKey>;
 
         /*
          * Constructor
          */
-        explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts) : ciphertexts(std::move(ciphertexts)) {}
+        EncodingElem(const EncodingElem &other) : ciphertexts(other.ciphertexts) {
+            assert(!other.ciphertexts.empty());
+        }
 
         /*
          * Static
          */
         static std::tuple<PublicKey, SecretKey> keygen() {
-            ::seal::KeyGenerator keygen(get_context());
-            const SecretKey &secret_key = keygen.secret_key();
+            SecretKey sk;
+            sk.reserve(get_contexts().size());
+            for (const auto &context: get_contexts()) {
+                ::seal::KeyGenerator keygen(context);
+                sk.push_back(keygen.secret_key());
+            }
             PublicKey pk = nullptr;
-            return {nullptr, secret_key};
+
+            return {nullptr, sk};
         }
 
-        static void set_context(::seal::SEALContext &context_) {
-            if (context == nullptr) {
-                context = new ::seal::SEALContext(context_);
-                encoder = new ::seal::BatchEncoder(context_);
-                evaluator = new ::seal::Evaluator(context_);
+        static void set_context() {
+            const ::seal::SEALContext &ring_context = RingElem::get_context();
+            auto ring_params = ring_context.first_context_data()->parms();
+            vector<::seal::SEALContext> enc_contexts;
+            enc_contexts.reserve(ring_params.coeff_modulus().size());
+            for (size_t i = 0; i < ring_params.coeff_modulus().size(); i++) {
+                ::seal::EncryptionParameters enc_params(::seal::scheme_type::bgv);
+                size_t poly_modulus_degree = ring_params.poly_modulus_degree();
+                enc_params.set_poly_modulus_degree(poly_modulus_degree);
+                enc_params.set_coeff_modulus(::seal::CoeffModulus::BFVDefault(poly_modulus_degree));
+//                enc_params.set_plain_modulus(::seal::PlainModulus::Batching(poly_modulus_degree, ring_params));
+                enc_params.set_plain_modulus(ring_params.plain_modulus());
+                ::seal::SEALContext context(enc_params);
+
+                if (context.first_context_data()->qualifiers().parameter_error !=
+                    ::seal::EncryptionParameterQualifiers::error_type::success) {
+                    std::cerr << context.first_context_data()->qualifiers().parameter_error_name() << std::endl;
+                    std::cerr << context.first_context_data()->qualifiers().parameter_error_message() << std::endl;
+                    throw std::invalid_argument("");
+                }
+                assert(context.first_context_data()->qualifiers().using_batching == true);
+//                assert(context.using_keyswitching() == false); // TODO: can we always force this to be false while having enough noise budget for (potentially) many additions?
+
+                enc_contexts.push_back(context);
+            }
+            set_contexts(enc_contexts);
+        }
+
+        static void set_contexts(const vector<::seal::SEALContext> &contexts_) {
+            if (contexts.empty()) {
+                contexts = vector<::seal::SEALContext>(contexts_);
+                encoders = vector<::seal::BatchEncoder *>();
+                evaluators = vector<::seal::Evaluator *>();
+                for (const ::seal::SEALContext &c: contexts) {
+                    encoders.push_back(new ::seal::BatchEncoder(c));
+                    evaluators.push_back(new ::seal::Evaluator(c));
+                }
             } else {
-                throw std::invalid_argument("cannot re-set context once set");
+                throw std::invalid_argument("cannot re-set contexts once set");
             }
         }
 
-        static ::seal::SEALContext &get_context() {
-            if (context == nullptr) {
+        static std::vector<::seal::SEALContext> &get_contexts() {
+            if (contexts.empty()) {
                 throw std::invalid_argument("context not set");
             } else {
-                return *context;
+                return contexts;
             }
         }
 
@@ -232,8 +302,7 @@ namespace ringsnark::seal {
         // Encode all elements in rs using the same BatchEncoder and Encryptor objects for efficiency
         static std::vector<EncodingElem> encode(const SecretKey &sk, const std::vector<RingElem> &rs);
 
-        static RingElem decode(const SecretKey &sk, const EncodingElem& e);
-
+        static RingElem decode(const SecretKey &sk, const EncodingElem &e);
 
         /*
          * Members
@@ -245,6 +314,7 @@ namespace ringsnark::seal {
 
         EncodingElem &operator*=(const RingElem &other);
 
+        explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts) : ciphertexts(std::move(ciphertexts)) {}
     };
 
     inline EncodingElem operator+(const EncodingElem &lhs, const EncodingElem &rhs) {

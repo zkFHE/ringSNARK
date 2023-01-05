@@ -1,7 +1,10 @@
 #include <algorithm>
 #include <cstdint>
+#include <boost/math/tools/polynomial.hpp>
 
 using size_t = std::size_t;
+template<typename RingT>
+using polynomial = boost::math::tools::polynomial<RingT>;
 
 template<typename RingT>
 vector<RingT> interpolate(const vector<RingT> &x, const vector<RingT> &y) {
@@ -54,39 +57,24 @@ inline bool is_zero(const vector<RingT> &coeffs) {
     return std::all_of(coeffs.begin(), coeffs.end(), [](const RingT &c) { return c.is_zero(); });
 }
 
+template<typename RingT>
+vector<RingT> multiply(const vector<RingT> &x, const vector<RingT> &y) {
+    polynomial<RingT> x_poly(x), y_poly(y);
+    x_poly *= y_poly;
+    return x_poly.data();
+
+}
+
+template<typename RingT>
+vector<RingT> add(const vector<RingT> &x, const vector<RingT> &y) {
+    polynomial<RingT> x_poly(x), y_poly(y);
+    x_poly += y_poly;
+    return x_poly.data();
+}
 
 template<typename RingT>
 vector<RingT> divide(const vector<RingT> &numerator, const vector<RingT> &denominator) {
-    auto numerator_size = numerator.size(); // == deg(numerator) + 1
-    auto denominator_size = denominator.size();
-
-    // Invariant: numerator == denominator * quotient + remainder
-    vector<RingT> quotient(numerator_size - denominator_size); // == 0 polynomial
-    vector<RingT> remainder(numerator); // == numerator
-
-
-    while (remainder.size() >= denominator.size()) {
-        // tmp = lead(remainder) / lead(denominator)
-        RingT tmp = remainder[remainder.size() - 1] / denominator[denominator.size() - 1];
-
-        // quotient += tmp
-        for (auto &q_i: quotient) {
-            q_i += tmp;
-        }
-
-        // remainder -= tmp * denominator
-        for (size_t i = 0; i < denominator.size(); i++) { // remainder.size() >= denominator.size()
-            remainder[i] -= tmp * denominator[i];
-        }
-
-        // remove leading zero coefficients
-        // after this, remainder == 0 iff remainder.size() == 0
-        size_t leading_zeros = 0;
-        for (int i = remainder.size() - 1; i >= 0; i--) {
-            if (!remainder[i].is_zero()) { leading_zeros++; }
-            else { break; }
-        }
-        remainder.resize(remainder.size() - leading_zeros);
-    }
-    return quotient;
+    polynomial<RingT> x_poly(numerator), y_poly(denominator);
+    x_poly /= y_poly;
+    return x_poly.data();
 }

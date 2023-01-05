@@ -125,13 +125,9 @@ namespace ringsnark {
 
         std::vector<r1cs_constraint<RingT> > constraints;
 
-        r1cs_constraint_system(const r1cs_constraint_system<RingT> &other) : primary_input_size(
-                other.primary_input_size),
-                                                                             auxiliary_input_size(
-                                                                                     other.auxiliary_input_size),
-                                                                             constraints(other.constraints) {}
+        r1cs_constraint_system(const r1cs_constraint_system<RingT> &other) = default;
 
-        r1cs_constraint_system() : primary_input_size(0), auxiliary_input_size(0) {}
+        r1cs_constraint_system() = default;
 
         [[nodiscard]] size_t num_inputs() const;
 

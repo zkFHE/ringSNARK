@@ -21,31 +21,23 @@ int main() {
     typedef ringsnark::seal::EncodingElem E;
 
     R::set_context(context);
-    E::set_context(context);
+    E::set_context();
 
     const size_t N = context.get_context_data(context.first_parms_id())->parms().poly_modulus_degree();
-    const size_t n = 5;
+    const size_t n = 6;
     ringsnark::protoboard<R> pb;
 
     // Set public values
-    vector<ringsnark::pb_variable<R>> vars(n);
-    for (int i = 0; i < vars.size(); i++) {
-        vars[i].allocate(pb, "x" + std::to_string(i));
-    }
-    pb.set_input_sizes(n);
-
-    // Set private values
-    // TODO: no private values in this simple example
+    ringsnark::pb_variable_array<R> vars(n, ringsnark::pb_variable<R>());
+    vars.allocate(pb, n, "x");
+    pb.set_input_sizes(n - 1); // vars[4] is private, all other values are public
 
     // Set constraints
     pb.add_r1cs_constraint(ringsnark::r1cs_constraint<R>(vars[0], vars[1], vars[4]));
-
-    // Generate CRS
-    const auto keypair = ringsnark::rinocchio::generator<R, E>(pb.get_constraint_system());
+    pb.add_r1cs_constraint(ringsnark::r1cs_constraint<R>(vars[4], vars[2] + vars[3], vars[5]));
 
     // Set values
-    vector<ringsnark::seal::RingElem> values;
-    values.reserve(n);
+    vector<ringsnark::seal::RingElem> values(n);
     {
         auto encoder = BatchEncoder(context);
         auto tables = context.get_context_data(context.first_parms_id())->small_ntt_tables();
@@ -72,17 +64,24 @@ int main() {
         poly.ntt_inplace(tables);
         values[2] = ringsnark::seal::RingElem(poly);
 
+        vs[3] = 5;
+        encoder.encode(vs, xs[3]);
+        poly = polytools::SealPoly(context, xs[3], &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        values[3] = ringsnark::seal::RingElem(poly);
+
         // Intermediate values
-        vs[4] = 2 * 3;
-        poly = polytools::SealPoly(*values[0].poly);
-        poly.multiply_inplace(*values[1].poly);
+        vs[4] = vs[0] * vs[1];
+        poly = polytools::SealPoly(values[0].get_poly());
+        poly.multiply_inplace(values[1].get_poly());
         values[4] = ringsnark::seal::RingElem(poly);
 
         // Outputs
-        vs[3] = 2 * 3 * 4;
-        poly = polytools::SealPoly(*values[4].poly);
-        poly.multiply_inplace(*values[2].poly);
-        values[3] = ringsnark::seal::RingElem(poly);
+        vs[5] = vs[4] * (vs[2] + vs[3]);
+        poly = polytools::SealPoly(values[2].get_poly());
+        poly.add_inplace(values[3].get_poly());
+        poly.multiply_inplace(values[4].get_poly());
+        values[5] = ringsnark::seal::RingElem(poly);
     }
     for (size_t i = 0; i < n; i++) {
         pb.val(vars[i]) = values[i];
@@ -91,6 +90,9 @@ int main() {
     cout << "#Variables\t" << pb.num_variables() << endl;
     cout << "#Constraints\t" << pb.num_constraints() << endl;
     assert(pb.is_satisfied());
+
+    // Generate CRS
+    const auto keypair = ringsnark::rinocchio::generator<R, E>(pb.get_constraint_system());
 
     const auto proof = ringsnark::rinocchio::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
 

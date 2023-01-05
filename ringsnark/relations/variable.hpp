@@ -55,7 +55,7 @@ namespace ringsnark {
 
         linear_term<RingT> operator*(const integer_coeff_t int_coeff) const;
 
-        linear_term<RingT> operator*(const RingT &field_coeff) const;
+        linear_term<RingT> operator*(const RingT &ring_coeff) const;
 
         linear_combination<RingT> operator+(const linear_combination<RingT> &other) const;
 
@@ -70,19 +70,19 @@ namespace ringsnark {
     linear_term<RingT> operator*(const integer_coeff_t int_coeff, const variable<RingT> &var);
 
     template<typename RingT>
-    linear_term<RingT> operator*(const RingT &field_coeff, const variable<RingT> &var);
+    linear_term<RingT> operator*(const RingT &ring_coeff, const variable<RingT> &var);
 
     template<typename RingT>
     linear_combination<RingT> operator+(const integer_coeff_t int_coeff, const variable<RingT> &var);
 
     template<typename RingT>
-    linear_combination<RingT> operator+(const RingT &field_coeff, const variable<RingT> &var);
+    linear_combination<RingT> operator+(const RingT &ring_coeff, const variable<RingT> &var);
 
     template<typename RingT>
     linear_combination<RingT> operator-(const integer_coeff_t int_coeff, const variable<RingT> &var);
 
     template<typename RingT>
-    linear_combination<RingT> operator-(const RingT &field_coeff, const variable<RingT> &var);
+    linear_combination<RingT> operator-(const RingT &ring_coeff, const variable<RingT> &var);
 
 
 /****************************** Linear term **********************************/
@@ -93,21 +93,22 @@ namespace ringsnark {
     template<typename RingT>
     class linear_term {
     public:
-
-        var_index_t index;
+        var_index_t index{};
         RingT coeff;
 
-        linear_term() {};
+        linear_term() = default;
+
+        linear_term(const linear_term<RingT> &other) = default;
 
         linear_term(const variable<RingT> &var);
 
         linear_term(const variable<RingT> &var, const integer_coeff_t int_coeff);
 
-        linear_term(const variable<RingT> &var, const RingT &field_coeff);
+        linear_term(const variable<RingT> &var, const RingT &ring_coeff);
 
         linear_term<RingT> operator*(const integer_coeff_t int_coeff) const;
 
-        linear_term<RingT> operator*(const RingT &field_coeff) const;
+        linear_term<RingT> operator*(const RingT &ring_coeff) const;
 
         linear_combination<RingT> operator+(const linear_combination<RingT> &other) const;
 
@@ -122,19 +123,19 @@ namespace ringsnark {
     linear_term<RingT> operator*(const integer_coeff_t int_coeff, const linear_term<RingT> &lt);
 
     template<typename RingT>
-    linear_term<RingT> operator*(const RingT &field_coeff, const linear_term<RingT> &lt);
+    linear_term<RingT> operator*(const RingT &ring_coeff, const linear_term<RingT> &lt);
 
     template<typename RingT>
     linear_combination<RingT> operator+(const integer_coeff_t int_coeff, const linear_term<RingT> &lt);
 
     template<typename RingT>
-    linear_combination<RingT> operator+(const RingT &field_coeff, const linear_term<RingT> &lt);
+    linear_combination<RingT> operator+(const RingT &ring_coeff, const linear_term<RingT> &lt);
 
     template<typename RingT>
     linear_combination<RingT> operator-(const integer_coeff_t int_coeff, const linear_term<RingT> &lt);
 
     template<typename RingT>
-    linear_combination<RingT> operator-(const RingT &field_coeff, const linear_term<RingT> &lt);
+    linear_combination<RingT> operator-(const RingT &ring_coeff, const linear_term<RingT> &lt);
 
 
 /***************************** Linear combination ****************************/
@@ -159,11 +160,11 @@ namespace ringsnark {
 
         linear_combination() = default;
 
-        linear_combination(const linear_combination<RingT>& other) = default;
+        linear_combination(const linear_combination<RingT> &other) = default;
 
         linear_combination(const integer_coeff_t int_coeff);
 
-        linear_combination(const RingT &field_coeff);
+        linear_combination(const RingT &ring_coeff);
 
         linear_combination(const variable<RingT> &var);
 
@@ -180,7 +181,7 @@ namespace ringsnark {
 
         void add_term(const variable<RingT> &var, const integer_coeff_t int_coeff);
 
-        void add_term(const variable<RingT> &var, const RingT &field_coeff);
+        void add_term(const variable<RingT> &var, const RingT &ring_coeff);
 
         void add_term(const linear_term<RingT> &lt);
 
@@ -188,7 +189,7 @@ namespace ringsnark {
 
         linear_combination<RingT> operator*(const integer_coeff_t int_coeff) const;
 
-        linear_combination<RingT> operator*(const RingT &field_coeff) const;
+        linear_combination<RingT> operator*(const RingT &ring_coeff) const;
 
         linear_combination<RingT> operator+(const linear_combination<RingT> &other) const;
 
@@ -198,7 +199,7 @@ namespace ringsnark {
 
         bool operator==(const linear_combination<RingT> &other) const;
 
-        bool is_valid(const size_t num_variables) const;
+        [[nodiscard]] bool is_valid(size_t num_variables) const;
 
         void print(const std::map<size_t, std::string> &variable_annotations = std::map<size_t, std::string>()) const;
 
@@ -218,19 +219,19 @@ namespace ringsnark {
     linear_combination<RingT> operator*(const integer_coeff_t int_coeff, const linear_combination<RingT> &lc);
 
     template<typename RingT>
-    linear_combination<RingT> operator*(const RingT &field_coeff, const linear_combination<RingT> &lc);
+    linear_combination<RingT> operator*(const RingT &ring_coeff, const linear_combination<RingT> &lc);
 
     template<typename RingT>
     linear_combination<RingT> operator+(const integer_coeff_t int_coeff, const linear_combination<RingT> &lc);
 
     template<typename RingT>
-    linear_combination<RingT> operator+(const RingT &field_coeff, const linear_combination<RingT> &lc);
+    linear_combination<RingT> operator+(const RingT &ring_coeff, const linear_combination<RingT> &lc);
 
     template<typename RingT>
     linear_combination<RingT> operator-(const integer_coeff_t int_coeff, const linear_combination<RingT> &lc);
 
     template<typename RingT>
-    linear_combination<RingT> operator-(const RingT &field_coeff, const linear_combination<RingT> &lc);
+    linear_combination<RingT> operator-(const RingT &ring_coeff, const linear_combination<RingT> &lc);
 
 } // ringsnark
 
