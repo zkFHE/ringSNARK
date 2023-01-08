@@ -68,11 +68,7 @@ namespace ringsnark {
 
         bool operator==(const r1cs_constraint<RingT> &other) const;
 
-        friend std::ostream &operator
-        <<<RingT>(
-        std::ostream &out,
-        const r1cs_constraint<RingT> &c
-        );
+        friend std::ostream &operator<<<RingT>(std::ostream &out, const r1cs_constraint<RingT> &c);
 
         friend std::istream &operator>><RingT>(std::istream &in, r1cs_constraint<RingT> &c);
     };

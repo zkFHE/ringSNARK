@@ -175,19 +175,19 @@ namespace ringsnark {
     template<typename RingT>
     class qrp_witness {
     private:
-        size_t num_variables_;
-        size_t degree_;
-        size_t num_inputs_;
+        const size_t num_variables_;
+        const size_t degree_;
+        const size_t num_inputs_;
 
     public:
-        RingT d1, d2, d3;
+        const RingT d1, d2, d3;
 
-        std::vector<RingT> coefficients_for_ABCs;
-        std::vector<RingT> coefficients_for_A_mid;
-        std::vector<RingT> coefficients_for_B_mid;
-        std::vector<RingT> coefficients_for_C_mid;
-        std::vector<RingT> coefficients_for_Z;
-        std::vector<RingT> coefficients_for_H;
+        const std::vector<RingT> coefficients_for_ABCs;
+        const std::vector<RingT> coefficients_for_A_mid;
+        const std::vector<RingT> coefficients_for_B_mid;
+        const std::vector<RingT> coefficients_for_C_mid;
+        const std::vector<RingT> coefficients_for_Z;
+        const std::vector<RingT> coefficients_for_H;
 
         qrp_witness(size_t num_variables,
                     size_t degree,

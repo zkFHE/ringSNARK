@@ -28,8 +28,9 @@ namespace ringsnark {
  */
     template<typename RingT>
     qrp_instance<RingT> r1cs_to_qrp_instance_map(const r1cs_constraint_system<RingT> &cs) {
-        const std::shared_ptr<evaluation_domain<RingT>> domain = get_evaluation_domain<RingT>(
-                cs.num_constraints() + cs.num_inputs() + 1);
+//        const std::shared_ptr<evaluation_domain<RingT>> domain = get_evaluation_domain<RingT>(
+//                cs.num_constraints() + cs.num_inputs() + 1);
+        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         std::vector<std::map<size_t, RingT>> A_in_Lagrange_basis(cs.num_variables() + 1);
         std::vector<std::map<size_t, RingT>> B_in_Lagrange_basis(cs.num_variables() + 1);
@@ -89,6 +90,7 @@ namespace ringsnark {
         const std::shared_ptr<evaluation_domain<RingT>> domain = get_evaluation_domain<RingT>(
                 cs.num_constraints() + cs.num_inputs() + 1
         );
+//        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         std::vector<RingT> At, Bt, Ct, Ht;
 
@@ -194,14 +196,16 @@ namespace ringsnark {
 
 
         /* Compute coefficients for A_mid, B_mid, C_mid */
-        std::vector<RingT> a_mid(domain->m, RingT::zero()), // a_mid[k] =
-                b_mid(domain->m, RingT::zero()),
-                c_mid(domain->m, RingT::zero());
-        /* account for all other constraints */
+        r1cs_variable_assignment<RingT> auxiliary_assignment(primary_input.size(), RingT::zero());
+        auxiliary_assignment.insert(auxiliary_assignment.end(), auxiliary_input.begin(), auxiliary_input.end());
+        std::vector<RingT> a_mid, b_mid, c_mid;
+        a_mid.reserve(cs.num_constraints());
+        b_mid.reserve(cs.num_constraints());
+        c_mid.reserve(cs.num_constraints());
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
-            a_mid[i] += cs.constraints[i].a.evaluate(full_variable_assignment);
-            b_mid[i] += cs.constraints[i].b.evaluate(full_variable_assignment);
-            c_mid[i] += cs.constraints[i].c.evaluate(full_variable_assignment);
+            a_mid.push_back(cs.constraints[i].a.evaluate(auxiliary_assignment));
+            b_mid.push_back(cs.constraints[i].b.evaluate(auxiliary_assignment));
+            c_mid.push_back(cs.constraints[i].c.evaluate(auxiliary_assignment));
         }
 
         // Compute coefficients for vanishing polynomial Z
@@ -226,30 +230,19 @@ namespace ringsnark {
 #endif
         /* add coefficients of the polynomial (d2*A + d1*B - d3) + d1*d2*Z */
         for (size_t i = 0; i < domain->m; ++i) {
-            coefficients_for_H[i] = d2 * aA[i] + d1 * aB[i];
+            coefficients_for_H[i] = d2 * aA[i];
+            coefficients_for_H[i] += d1 * aB[i];
         }
         coefficients_for_H[0] -= d3;
         domain->add_poly_Z(d1 * d2, coefficients_for_H);
 
-        // Compute coefficients of A*B - C
-        // TODO: can we use 2*m-1 instead (even for FFT impl. as some later point)?
-        auto m = cs.num_constraints() + cs.num_inputs() + 1;
-        auto domain_2m = get_evaluation_domain<RingT>(2 * m);
-        vector<RingT> x, vwy;
-        x.reserve(2 * m);
-        vwy.reserve(2 * m);
-        for (size_t i = 0; i < 2 * m; i++) {
-            x.push_back(domain_2m->get_domain_element(i));
-            vector<RingT> v(m, RingT::zero()), w(m, RingT::zero()), y(m, RingT::zero());
-            RingT vwy_i = eval(aA, x[i]);
-            vwy_i *= eval(aB, x[i]);
-            vwy_i -= eval(aC, x[i]);
-
-            vwy.push_back(vwy_i);
-        }
-        vector<RingT> H_tmp = interpolate(x, vwy);
+        // Compute coefficients of (A*B - C) / Z
+        auto min_C(aC);
+        for (auto &c_i: min_C) { c_i.negate_inplace(); }
+        auto prod = multiply(aA, aB);
+        auto diff = add(prod, min_C);
+        auto H_tmp(diff);
         domain->divide_by_Z_on_coset(H_tmp);
-
 
 #ifdef MULTICORE
 #pragma omp parallel for
@@ -268,7 +261,6 @@ namespace ringsnark {
                                   a_mid, b_mid, c_mid, Z,
                                   std::move(coefficients_for_H));
     }
-
 } // ringsnark
 
 #endif // R1CS_TO_QRP_TCC_
