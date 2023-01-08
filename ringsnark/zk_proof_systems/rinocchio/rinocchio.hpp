@@ -21,15 +21,19 @@ namespace ringsnark::rinocchio {
         const PublicKey pk_enc;
 
         proving_key(const ringsnark::r1cs_constraint_system<RingT> &constraint_system,
-                    const vector<EncT> &sPows,
-                    const vector<EncT> &alphaSPows,
-                    const vector<EncT> &betaProds,
-                    const PublicKey &pkEnc) :
+                    const vector<EncT> &s_pows,
+                    const vector<EncT> &alpha_s_pows,
+                    const vector<EncT> &beta_prods,
+                    const PublicKey &pk_enc) :
                 constraint_system(constraint_system),
-                s_pows(sPows),
-                alpha_s_pows(alphaSPows),
-                beta_prods(betaProds),
-                pk_enc(pkEnc) {}
+                s_pows(s_pows),
+                alpha_s_pows(alpha_s_pows),
+                beta_prods(beta_prods),
+                pk_enc(pk_enc) {
+            assert(s_pows.size() == constraint_system.num_constraints() + 1);
+            assert(alpha_s_pows.size() == constraint_system.num_constraints() + 1);
+            assert(beta_prods.size() == constraint_system.auxiliary_input_size);
+        }
 
         [[nodiscard]] size_t size_in_bits() const override {
             return s_pows.size() * s_pows[0].size_in_bits()
@@ -53,13 +57,20 @@ namespace ringsnark::rinocchio {
 
         verification_key() = default;
 
-        verification_key(const proving_key<RingT, EncT> &pk, RingT s, RingT alpha, RingT beta, RingT rV, RingT rW,
-                         RingT rY, SecretKey skEnc) : pk(pk),
-                                                      s(s),
-                                                      alpha(alpha),
-                                                      beta(beta),
-                                                      r_v(rV), r_w(rW), r_y(rY),
-                                                      sk_enc(skEnc) {}
+        verification_key(const proving_key<RingT, EncT> &pk, RingT s, RingT alpha, RingT beta,
+                         RingT r_v, RingT r_w, RingT r_y,
+                         SecretKey sk_enc) : pk(pk),
+                                             s(s),
+                                             alpha(alpha),
+                                             beta(beta),
+                                             r_v(r_v), r_w(r_w), r_y(r_y),
+                                             sk_enc(sk_enc) {
+            assert(alpha.is_invertible());
+            assert(!beta.is_zero());
+            assert(r_v.is_invertible());
+            assert(r_w.is_invertible());
+            assert(r_y == r_v * r_w);
+        }
 
         [[nodiscard]] size_t size_in_bits() const override {
             return s.size_in_bits() + alpha.size_in_bits() + beta.size_in_bits() +
