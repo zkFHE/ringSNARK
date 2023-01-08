@@ -4,18 +4,6 @@
 namespace ringsnark::seal {
     RingElem::RingElem() : value((Scalar) 0) {}
 
-//    RingElem::RingElem(const RingElem &other) {
-//        auto other_p = &other;
-//        auto other_v = other.value;
-//        if (other.is_poly()) {
-//            value = other.get_poly();
-//        } else if (other.is_scalar()) {
-//            value = other.get_scalar();
-//        } else {
-//            throw RingElem::invalid_ring_elem_types();
-//        }
-//    }
-
     RingElem::RingElem(Scalar value) : value(value) {}
 
     RingElem::RingElem(const polytools::SealPoly &poly) : value(polytools::SealPoly(poly)) {}
@@ -126,7 +114,21 @@ namespace ringsnark::seal {
                 value = polytools::SealPoly(other.get_poly());
                 get_poly().add_scalar_inplace(scalar);
             } else if (other.is_scalar()) {
-                this->get_scalar() += other.get_scalar();
+                size_t this_bitsize = 1 + std::floor(std::log2(this->get_scalar()));
+                size_t other_bitsize = 1 + std::floor(std::log2(other.get_scalar()));
+                size_t res_bitsize = (this_bitsize == other_bitsize)
+                                     ? this_bitsize + 1
+                                     : std::max(this_bitsize, other_bitsize);
+                size_t q1 = get_context().first_context_data()->parms().coeff_modulus()[0].value();
+                size_t q1_bitsize = 1 + std::floor(std::log2(q1));
+                if (res_bitsize < q1_bitsize) {
+                    this->get_scalar() += other.get_scalar();
+                } else {
+                    // Computing result requires switching to RNS representation, so we use polytools to take care of it
+                    // TODO: store a custom RNS representation of scalar instead for efficiency?
+                    this->to_poly_inplace();
+                    this->operator+=(other);
+                }
             } else {
                 throw invalid_ring_elem_types();
             }
@@ -181,7 +183,19 @@ namespace ringsnark::seal {
                 value = polytools::SealPoly(other.get_poly());
                 get_poly().multiply_scalar_inplace(scalar);
             } else if (other.is_scalar()) {
-                this->get_scalar() *= other.get_scalar();
+                size_t this_bitsize = 1 + std::floor(std::log2(this->get_scalar()));
+                size_t other_bitsize = 1 + std::floor(std::log2(other.get_scalar()));
+                size_t res_bitsize = this_bitsize + other_bitsize;
+                size_t q1 = get_context().first_context_data()->parms().coeff_modulus()[0].value();
+                size_t q1_bitsize = 1 + std::floor(std::log2(q1));
+                if (res_bitsize < q1_bitsize) {
+                    this->get_scalar() *= other.get_scalar();
+                } else {
+                    // Computing result requires switching to RNS representation, so we use polytools to take care of it
+                    // TODO: store a custom RNS representation of scalar instead for efficiency?
+                    this->to_poly_inplace();
+                    this->operator*=(other);
+                }
             } else {
                 throw invalid_ring_elem_types();
             }
@@ -311,45 +325,61 @@ namespace ringsnark::seal {
         }
 
         for (const auto &r: rs) {
-            if (r.is_scalar()) {
-                std::fill(values.begin(), values.end(), 0);
-                values[0] = r.get_scalar();
+            ::polytools::SealPoly poly = (r.is_scalar()) ? r.to_poly().get_poly() : r.get_poly();
 
-                for (size_t i = 0; i < get_contexts().size(); i++) {
-                    encoders[i]->encode(values, ptxt);
-                    encryptors[i]->encrypt_symmetric(ptxt, ciphertexts[i]);
-                }
-
-                encs.emplace_back(ciphertexts);
-            } else if (r.is_poly()) {
-                // TODO: handle case where number of moduli differs, e.g., after mod-switching on the ring
-                assert(r.get_poly().get_coeff_modulus_count() == ciphertexts.size());
-                for (size_t i = 0; i < get_contexts().size(); i++) {
-                    encoders[i]->encode(r.get_poly().get_limb(i), ptxt);
-                    encryptors[i]->encrypt_symmetric(ptxt, ciphertexts[i]);
-                }
-
-                encs.emplace_back(ciphertexts);
-            } else {
-                throw RingElem::invalid_ring_elem_types();
+            // TODO: handle case where number of moduli differs, e.g., after mod-switching on the ring
+            assert(poly.get_coeff_modulus_count() == ciphertexts.size());
+            for (size_t i = 0; i < get_contexts().size(); i++) {
+                encoders[i]->encode(poly.get_limb(i), ptxt);
+                encryptors[i]->encrypt_symmetric(ptxt, ciphertexts[i]);
             }
-        }
 
+            encs.emplace_back(ciphertexts);
+        }
         return encs;
     }
 
     RingElem EncodingElem::decode(const SecretKey &sk, const EncodingElem &e) {
         // TODO: optimize to reuse same decryptor object for many invocations
         ::seal::Plaintext ptxt;
-        auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
-        std::vector<uint64_t> coeffs(parms.poly_modulus_degree() * parms.coeff_modulus().size());
+        auto parms = RingElem::get_context().first_context_data()->parms();
+//        auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
+//        std::vector<uint64_t> coeffs(parms.poly_modulus_degree() * parms.coeff_modulus().size());
+        std::vector<uint64_t> coeffs;
+
         assert(e.ciphertexts.size() == get_contexts().size());
         for (size_t i = 0; i < e.ciphertexts.size(); i++) {
             ::seal::Decryptor decryptor(get_contexts()[i], sk[i]);
-            decryptor.decrypt(e.ciphertexts[i], ptxt);
-            encoders[i]->decode(ptxt, gsl::span(coeffs.data() + i * parms.poly_modulus_degree(),
-                                                parms.poly_modulus_degree()));
+            vector<uint64_t> curr_limb(parms.poly_modulus_degree());
+
+            try {
+                if (decryptor.invariant_noise_budget(e.ciphertexts[i]) <= 0) {
+                    // This indicates that either the parameters of the encoding scheme were set to be too small,
+                    // or that the prover used more budget (i.e., performed more operations) than required.
+                    throw std::invalid_argument("not enough noise budget remaining at decryption");
+                }
+                decryptor.decrypt(e.ciphertexts[i], ptxt);
+
+                //            encoders[i]->decode(ptxt, gsl::span(coeffs.data() + i * parms.poly_modulus_degree(),
+//                                                parms.poly_modulus_degree()));
+                encoders[i]->decode(ptxt, curr_limb);
+            } catch (std::invalid_argument &e) {
+                if (std::string(e.what()) == "encrypted is empty") {
+                    // TODO: can we handle this case more explicitly to prevent confusion, e.g., have a dedicated
+                    //  flag/subclass for the "0" ciphertext?
+                    // This should only really be an issue when the SNARK is used in non-ZK mode;
+                    // with ZK, the noise terms prevent the ctxt from being zero w.h.p.
+//                    return RingElem(0);
+                    // Do nothing, curr_limb already holds all zeros.
+                } else {
+                    throw e;
+                }
+            }
+
+
+            coeffs.insert(coeffs.end(), curr_limb.begin(), curr_limb.end());
         }
+        assert(coeffs.size() == parms.poly_modulus_degree() * parms.coeff_modulus().size());
         return RingElem(polytools::SealPoly(RingElem::get_context(), coeffs, parms.parms_id()));
     }
 
@@ -386,15 +416,16 @@ namespace ringsnark::seal {
         }
 
         if (r.is_scalar()) {
-            auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
-            std::vector<uint64_t> values(parms.poly_modulus_degree());
-            values[0] = r.get_scalar();
-
-            for (size_t i = 0; i < get_contexts().size(); i++) {
-                encoders[i]->encode(values, ptxt);
-                evaluators[i]->multiply_plain_inplace(ciphertexts[i], ptxt);
-            }
-            return *this;
+            return this->operator*=(r.to_poly());
+//            auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
+//            std::vector<uint64_t> values(parms.poly_modulus_degree());
+//            values[0] = r.get_scalar();
+//
+//            for (size_t i = 0; i < get_contexts().size(); i++) {
+//                encoders[i]->encode(values, ptxt);
+//                evaluators[i]->multiply_plain_inplace(ciphertexts[i], ptxt);
+//            }
+//            return *this;
         } else if (r.is_poly()) {
             assert(r.get_poly().get_coeff_modulus_count() == this->ciphertexts.size());
 

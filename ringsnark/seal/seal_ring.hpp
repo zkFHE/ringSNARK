@@ -40,7 +40,7 @@ namespace ringsnark::seal {
 
         virtual ~RingElem() = default;
 
-        explicit RingElem(uint64_t value);
+        RingElem(uint64_t value);
 
         explicit RingElem(const polytools::SealPoly &poly);
 
@@ -249,17 +249,22 @@ namespace ringsnark::seal {
         }
 
         static void set_context() {
+            // TODO: find (joint) primes Q_1, ..., Q_L for encoding schemes s.t.
+            // Q_1 > q_l, and Q, resp. L are just barely big enough to allow for a linear homomorphism
             const ::seal::SEALContext &ring_context = RingElem::get_context();
             auto ring_params = ring_context.first_context_data()->parms();
             vector<::seal::SEALContext> enc_contexts;
             enc_contexts.reserve(ring_params.coeff_modulus().size());
+
+            auto coeff_modulus_max_bit_count = ::seal::CoeffModulus::MaxBitCount(ring_params.poly_modulus_degree());
+
+
             for (size_t i = 0; i < ring_params.coeff_modulus().size(); i++) {
                 ::seal::EncryptionParameters enc_params(::seal::scheme_type::bgv);
                 size_t poly_modulus_degree = ring_params.poly_modulus_degree();
                 enc_params.set_poly_modulus_degree(poly_modulus_degree);
-                enc_params.set_coeff_modulus(::seal::CoeffModulus::BFVDefault(poly_modulus_degree));
-//                enc_params.set_plain_modulus(::seal::PlainModulus::Batching(poly_modulus_degree, ring_params));
-                enc_params.set_plain_modulus(ring_params.plain_modulus());
+                enc_params.set_plain_modulus(ring_params.coeff_modulus()[i].value());
+                enc_params.set_coeff_modulus(::seal::CoeffModulus::Create(poly_modulus_degree, {coeff_modulus_max_bit_count}));
                 ::seal::SEALContext context(enc_params);
 
                 if (context.first_context_data()->qualifiers().parameter_error !=
@@ -268,7 +273,10 @@ namespace ringsnark::seal {
                     std::cerr << context.first_context_data()->qualifiers().parameter_error_message() << std::endl;
                     throw std::invalid_argument("");
                 }
+
+                // This should always hold, as ring_params.plain_modulus() = q_i is prime, and hence q_i = 1 mod 2N for a power-of-two N
                 assert(context.first_context_data()->qualifiers().using_batching == true);
+
 //                assert(context.using_keyswitching() == false); // TODO: can we always force this to be false while having enough noise budget for (potentially) many additions?
 
                 enc_contexts.push_back(context);
@@ -315,6 +323,8 @@ namespace ringsnark::seal {
         EncodingElem &operator*=(const RingElem &other);
 
         explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts) : ciphertexts(std::move(ciphertexts)) {}
+
+        friend bool operator==(const EncodingElem &lhs, const EncodingElem &rhs);
     };
 
     inline EncodingElem operator+(const EncodingElem &lhs, const EncodingElem &rhs) {
@@ -328,7 +338,31 @@ namespace ringsnark::seal {
         res *= rhs;
         return res;
     }
+
+    inline EncodingElem operator*(const RingElem &lhs, const EncodingElem &rhs) {
+        EncodingElem res(rhs);
+        res *= lhs;
+        return res;
+    }
+
+    inline bool operator==(const EncodingElem &lhs, const EncodingElem &rhs) {
+        if (lhs.ciphertexts.size() != rhs.ciphertexts.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < lhs.ciphertexts.size(); i++) {
+            assert(lhs.ciphertexts[i].size() == rhs.ciphertexts[i].size());
+            for (size_t j = 0; j < lhs.ciphertexts[i].size(); j++) {
+                ::polytools::SealPoly l(RingElem::get_context(), lhs.ciphertexts[i], j);
+                ::polytools::SealPoly r(RingElem::get_context(), rhs.ciphertexts[i], j);
+                if (!l.is_equal(r)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
+
 
 namespace std {
     template<>
