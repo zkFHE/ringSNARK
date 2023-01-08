@@ -39,7 +39,8 @@ add_executable(
         util/interpolation_test.cpp
         util/polynomials.hpp
         util/polynomials.tcc
-        util/test_utils.hpp)
+        util/test_utils.hpp
+)
 
 target_link_libraries(
         interpolation_test
@@ -55,7 +56,8 @@ add_executable(
         util/division_test.cpp
         util/polynomials.hpp
         util/polynomials.tcc
-        util/test_utils.hpp)
+        util/test_utils.hpp
+)
 
 target_link_libraries(
         division_test
@@ -66,3 +68,16 @@ target_link_libraries(
 )
 
 
+add_executable(
+        encoding_test
+
+        tests/encoding_test.cpp
+)
+
+target_link_libraries(
+        encoding_test
+
+        ringsnark
+        gtest
+        gtest_main
+)
