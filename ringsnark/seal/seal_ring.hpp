@@ -281,7 +281,6 @@ namespace ringsnark::seal {
                     throw std::invalid_argument("");
                 }
 
-                // This should always hold, as ring_params.plain_modulus() = q_i is prime, and hence q_i = 1 mod 2N for a power-of-two N
                 assert(context.first_context_data()->qualifiers().using_batching == true);
 
 //                assert(context.using_keyswitching() == false); //TODO: can we always force this to be false while having enough noise budget for (potentially) many additions?

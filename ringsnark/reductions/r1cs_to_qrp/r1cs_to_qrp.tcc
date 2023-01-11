@@ -120,7 +120,6 @@ namespace ringsnark {
     }
 
 
-
 /**
  * Witness map for the R1CS-to-QRP reduction.
  *
@@ -187,6 +186,24 @@ namespace ringsnark {
         auto b_mid = interpolate(xs, b_mid_);
         auto c_mid = interpolate(xs, c_mid_);
 
+        r1cs_variable_assignment<RingT> primary_assignment(primary_input);
+        vector<RingT> zeros(auxiliary_input.size(), RingT::zero());
+        primary_assignment.insert(primary_assignment.end(), zeros.begin(), zeros.end());
+        std::vector<RingT> a_io, b_io, c_io;
+        a_io.reserve(cs.num_constraints());
+        b_io.reserve(cs.num_constraints());
+        c_io.reserve(cs.num_constraints());
+        for (size_t i = 0; i < cs.num_constraints(); ++i) {
+            a_io.push_back(cs.constraints[i].a.evaluate(primary_assignment));
+            b_io.push_back(cs.constraints[i].b.evaluate(primary_assignment));
+            c_io.push_back(cs.constraints[i].c.evaluate(primary_assignment));
+        }
+
+        for (size_t i = 0; i < domain->m; i++) { xs[i] = domain->get_domain_element(i); }
+        a_io = interpolate(xs, a_io);
+        b_io = interpolate(xs, b_io);
+        c_io = interpolate(xs, c_io);
+
 
         // Compute coefficients for vanishing polynomial Z
         std::vector<RingT> Z = domain->vanishing_polynomial();
@@ -236,6 +253,7 @@ namespace ringsnark {
                                   d2,
                                   d3,
                                   full_variable_assignment,
+                                  a_io, b_io, c_io,
                                   a_mid, b_mid, c_mid, Z,
                                   std::move(coefficients_for_H));
     }

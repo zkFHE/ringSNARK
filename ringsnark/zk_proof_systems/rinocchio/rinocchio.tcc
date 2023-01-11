@@ -19,7 +19,6 @@ namespace ringsnark::rinocchio {
 
         vector<RingT> s_pows_ring(qrp_inst.Ht.begin(), qrp_inst.Ht.begin() + cs.num_constraints() + 1);
         vector<RingT> alpha_s_pows_ring(s_pows_ring);
-        for (auto &s_i: s_pows_ring) { s_i.to_poly_inplace(); }
         for (auto &s_i: alpha_s_pows_ring) { s_i *= alpha; }
 
         vector<RingT> linchecks, rv_vs, rw_ws, ry_ys;

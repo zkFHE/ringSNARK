@@ -1,11 +1,7 @@
-#ifndef RING_SNARK_H
-#define RING_SNARK_H
+#ifndef RINOCCHIO_HPP
+#define RINOCCHIO_HPP
 
-#include <utility>
-#include <set>
-#include "seal/seal.h"
 #include <ringsnark/zk_proof_systems/r1cs_ppzksnark.hpp>
-#include <ringsnark/common/data_structures/sparse_vector.hpp>
 
 using std::vector;
 

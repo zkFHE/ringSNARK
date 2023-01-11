@@ -183,6 +183,9 @@ namespace ringsnark {
         const RingT d1, d2, d3;
 
         const std::vector<RingT> coefficients_for_ABCs;
+        const std::vector<RingT> coefficients_for_A_io;
+        const std::vector<RingT> coefficients_for_B_io;
+        const std::vector<RingT> coefficients_for_C_io;
         const std::vector<RingT> coefficients_for_A_mid;
         const std::vector<RingT> coefficients_for_B_mid;
         const std::vector<RingT> coefficients_for_C_mid;
@@ -196,6 +199,9 @@ namespace ringsnark {
                     const RingT &d2,
                     const RingT &d3,
                     const std::vector<RingT> &coefficients_for_ABCs,
+                    const std::vector<RingT> &coefficients_for_A_io,
+                    const std::vector<RingT> &coefficients_for_B_io,
+                    const std::vector<RingT> &coefficients_for_C_io,
                     const std::vector<RingT> &coefficients_for_A_mid,
                     const std::vector<RingT> &coefficients_for_B_mid,
                     const std::vector<RingT> &coefficients_for_C_mid,
@@ -210,6 +216,9 @@ namespace ringsnark {
                     const RingT &d2,
                     const RingT &d3,
                     const std::vector<RingT> &coefficients_for_ABCs,
+                    const std::vector<RingT> &coefficients_for_A_io,
+                    const std::vector<RingT> &coefficients_for_B_io,
+                    const std::vector<RingT> &coefficients_for_C_io,
                     const std::vector<RingT> &coefficients_for_A_mid,
                     const std::vector<RingT> &coefficients_for_B_mid,
                     const std::vector<RingT> &coefficients_for_C_mid,
