@@ -10,16 +10,6 @@ See qrp.hpp .
 #ifndef QRP_TCC_
 #define QRP_TCC_
 
-/*
-#include <libff/algebra/scalar_multiplication/multiexp.hpp>
-#include <libff/common/profiling.hpp>
-#include <libff/common/utils.hpp>
-#include <libfqfft/evaluation_domain/evaluation_domain.hpp>
-*/
-
-#include "ringsnark/reductions/r1cs_to_qrp/evaluation_domain.hpp"
-#include "qrp.hpp"
-
 namespace ringsnark {
     template<typename T, typename U>
     T inner_product(typename std::vector<T>::const_iterator a_start,

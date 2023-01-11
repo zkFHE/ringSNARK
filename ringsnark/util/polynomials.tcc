@@ -13,12 +13,8 @@ vector<RingT> interpolate(const vector<RingT> &x, const vector<RingT> &y) {
     int k, j, i;
     RingT phi, ff, b;
 
-    vector<RingT> coeffs(n);
-    vector<RingT> s(n);
-    for (i = 0; i < n; i++) {
-        s[i] = RingT::zero();
-        coeffs[i] = RingT::zero();
-    }
+    vector<RingT> coeffs(n, RingT::zero());
+    vector<RingT> s(n, RingT::zero());
     s[n - 1] = -x[0];
 
     for (i = 1; i < n; i++) {
@@ -30,13 +26,17 @@ vector<RingT> interpolate(const vector<RingT> &x, const vector<RingT> &y) {
     for (j = 0; j < n; j++) {
         phi = RingT(n);
         for (k = n - 1; k > 0; k--) {
-            phi = RingT(k) * s[k] + x[j] * phi; // TODO: use *= and break down
+            // phi = RingT(k) * s[k] + x[j] * phi;
+            phi *= x[j];
+            phi += s[k] * RingT(k);
         }
         ff = y[j] / phi;
         b = RingT::one();
         for (k = n - 1; k >= 0; k--) {
+            // b = s[k] + x[j] * b;
             coeffs[k] += b * ff;
-            b = s[k] + x[j] * b;
+            b *= x[j];
+            b += s[k];
         }
     }
     return coeffs;
@@ -44,7 +44,7 @@ vector<RingT> interpolate(const vector<RingT> &x, const vector<RingT> &y) {
 
 template<typename RingT>
 RingT eval(const vector<RingT> &coeffs, const RingT &x) {
-    RingT res(coeffs.size() - 1);
+    RingT res(coeffs[coeffs.size() - 1]);
     for (int i = coeffs.size() - 2; i >= 0; i--) {
         res *= x;
         res += coeffs[i];

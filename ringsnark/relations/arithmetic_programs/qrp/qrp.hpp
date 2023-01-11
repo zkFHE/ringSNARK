@@ -26,7 +26,7 @@
 #include <map>
 #include <memory>
 
-#include <ringsnark/reductions/r1cs_to_qrp/evaluation_domain.hpp>
+#include "ringsnark/util/evaluation_domain.hpp"
 
 namespace ringsnark {
 

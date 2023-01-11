@@ -11,7 +11,7 @@ using namespace seal;
 
 int main() {
     EncryptionParameters params(scheme_type::bgv);
-    auto poly_modulus_degree = (size_t) pow(2, 12);
+    auto poly_modulus_degree = (size_t) pow(2, 11);
     params.set_poly_modulus_degree(poly_modulus_degree);
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
     params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
@@ -48,51 +48,58 @@ int main() {
         auto tables = context.get_context_data(context.first_parms_id())->small_ntt_tables();
 
         vector<uint64_t> vs(N);
-        vector<Plaintext> xs(n);
+        Plaintext ptxt;
+        vector<::polytools::SealPoly> polys(n, ::polytools::SealPoly(context));
 
         // Inputs
         vs[0] = 2;
-        encoder.encode(vs, xs[0]);
-        auto poly = polytools::SealPoly(context, xs[0], &(context.first_parms_id()));
+        encoder.encode(vs, ptxt);
+        auto poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
         poly.ntt_inplace(tables);
+        polys[0] = poly;
         values[0] = ringsnark::seal::RingElem(poly);
-        values[0] = ringsnark::seal::RingElem(vs[0]);
+//        values[0] = ringsnark::seal::RingElem(vs[0]);
 
         vs[1] = 3;
-        encoder.encode(vs, xs[1]);
-//        poly = polytools::SealPoly(context, xs[1], &(context.first_parms_id()));
-//        poly.ntt_inplace(tables);
-//        values[1] = ringsnark::seal::RingElem(poly);
-        values[1] = ringsnark::seal::RingElem(vs[1]);
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[1] = poly;
+        values[1] = ringsnark::seal::RingElem(poly);
+//        values[1] = ringsnark::seal::RingElem(vs[1]);
 
         vs[2] = 4;
-        encoder.encode(vs, xs[2]);
-//        poly = polytools::SealPoly(context, xs[2], &(context.first_parms_id()));
-//        poly.ntt_inplace(tables);
-//        values[2] = ringsnark::seal::RingElem(poly);
-        values[2] = ringsnark::seal::RingElem(vs[2]);
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[2] = poly;
+        values[2] = ringsnark::seal::RingElem(poly);
+//        values[2] = ringsnark::seal::RingElem(vs[2]);
 
         vs[3] = 5;
-        encoder.encode(vs, xs[3]);
-//        poly = polytools::SealPoly(context, xs[3], &(context.first_parms_id()));
-//        poly.ntt_inplace(tables);
-//        values[3] = ringsnark::seal::RingElem(poly);
-        values[3] = ringsnark::seal::RingElem(vs[3]);
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[3] = poly;
+        values[3] = ringsnark::seal::RingElem(poly);
+//        values[3] = ringsnark::seal::RingElem(vs[3]);
 
         // Intermediate values
         vs[5] = vs[2] * vs[3];
-//        poly = polytools::SealPoly(context, xs[2], &(context.first_parms_id()));
-//        poly.multiply_inplace(polytools::SealPoly(context, xs[3], &(context.first_parms_id())));
-//        values[5] = ringsnark::seal::RingElem(poly);
-        values[5] = ringsnark::seal::RingElem(vs[5]);
+        poly = ::polytools::SealPoly(polys[2]);
+        poly.multiply_inplace(polys[3]);
+        polys[5] = poly;
+        values[5] = ringsnark::seal::RingElem(poly);
+//        values[5] = ringsnark::seal::RingElem(vs[5]);
 
         // Outputs
         vs[4] = (vs[0] + vs[1]) * vs[5];
-//        poly = polytools::SealPoly(polytools::SealPoly(context, xs[0], &(context.first_parms_id())));
-//        poly.add_inplace(polytools::SealPoly(context, xs[1], &(context.first_parms_id())));
-//        poly.multiply_inplace(polytools::SealPoly(context, xs[5], &(context.first_parms_id())));
-//        values[4] = ringsnark::seal::RingElem(poly);
-        values[4] = ringsnark::seal::RingElem(vs[4]);
+        poly = ::polytools::SealPoly(polys[0]);
+        poly.add_inplace(polys[1]);
+        poly.multiply_inplace(polys[5]);
+        polys[4] = poly;
+        values[4] = ringsnark::seal::RingElem(poly);
+//        values[4] = ringsnark::seal::RingElem(vs[4]);
     }
     for (size_t i = 0; i < n; i++) {
         pb.val(vars[i]) = values[i];

@@ -10,7 +10,7 @@ namespace ringsnark::seal {
 
     [[nodiscard]] size_t RingElem::size_in_bits() const {
         if (is_scalar()) {
-            return 8 * sizeof(Scalar);// TODO: or log2(value)?
+            return 8 * sizeof(Scalar);
         } else if (is_poly()) {
             size_t size = 0;
             for (const auto &q_i: get_poly().get_coeff_modulus()) {
@@ -234,40 +234,6 @@ namespace ringsnark::seal {
         }
     }
 
-    RingElem RingElem::to_scalar() const {
-        if (is_scalar()) {
-            return *(new RingElem(*this));
-        } else if (is_poly()) {
-            // TODO: Surely there's a more efficient and simpler way to do this
-            // Use SEAL's encoder to decode the current polynomial as a scalar value
-            ::seal::BatchEncoder encoder(get_context());
-            auto context_data = get_context().get_context_data(get_poly().get_parms_id());
-
-            auto *tmp = new RingElem(*this);
-
-            // Transform to iNTT form
-            auto tables = context_data->small_ntt_tables();
-            tmp->get_poly().intt_inplace(tables);
-
-            std::vector<Scalar> values(context_data->parms().poly_modulus_degree());
-            ::seal::Plaintext ptxt = polytools::poly_to_ptxt(get_context(), tmp->get_poly());
-            encoder.decode(ptxt, values);
-
-            for (int i = 1; i < values.size(); i++) {
-                if (values[i] != 0) {
-                    throw std::invalid_argument(
-                            "cannot convert poly to scalar, coefficient at index " + std::to_string(i) + " is " +
-                            std::to_string(values[i]) + " != 0");
-                }
-            }
-            auto res = new RingElem(values[0]);
-            assert(res->is_scalar());
-            return *res;
-        } else {
-            throw invalid_ring_elem_types();
-        }
-    }
-
     size_t RingElem::hash() const {
         if (is_scalar()) {
             return this->get_scalar();
@@ -309,15 +275,10 @@ namespace ringsnark::seal {
     std::vector<EncodingElem> EncodingElem::encode(const SecretKey &sk, const std::vector<RingElem> &rs) {
         assert(get_contexts().size() == sk.size());
         std::vector<EncodingElem> encs;
-
         ::seal::Plaintext ptxt;
-
         std::vector<::seal::Ciphertext> ciphertexts(get_contexts().size());
 
-        // TODO: assert that this is the same across all contexts
-        auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
-        std::vector<uint64_t> values(parms.poly_modulus_degree());
-
+        // Reuse encryptors for all elements
         vector<::seal::Encryptor *> encryptors;
         encryptors.reserve(get_contexts().size());
         for (size_t i = 0; i < get_contexts().size(); i++) {
@@ -330,6 +291,7 @@ namespace ringsnark::seal {
             // TODO: handle case where number of moduli differs, e.g., after mod-switching on the ring
             assert(poly.get_coeff_modulus_count() == ciphertexts.size());
             for (size_t i = 0; i < get_contexts().size(); i++) {
+                // TODO: encode() silently writes only up to the vector size. Could this cause problems down the line?
                 encoders[i]->encode(poly.get_limb(i), ptxt);
                 encryptors[i]->encrypt_symmetric(ptxt, ciphertexts[i]);
             }
@@ -343,8 +305,6 @@ namespace ringsnark::seal {
         // TODO: optimize to reuse same decryptor object for many invocations
         ::seal::Plaintext ptxt;
         auto parms = RingElem::get_context().first_context_data()->parms();
-//        auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
-//        std::vector<uint64_t> coeffs(parms.poly_modulus_degree() * parms.coeff_modulus().size());
         std::vector<uint64_t> coeffs;
 
         assert(e.ciphertexts.size() == get_contexts().size());
@@ -359,9 +319,6 @@ namespace ringsnark::seal {
                     throw std::invalid_argument("not enough noise budget remaining at decryption");
                 }
                 decryptor.decrypt(e.ciphertexts[i], ptxt);
-
-                //            encoders[i]->decode(ptxt, gsl::span(coeffs.data() + i * parms.poly_modulus_degree(),
-//                                                parms.poly_modulus_degree()));
                 encoders[i]->decode(ptxt, curr_limb);
             } catch (std::invalid_argument &e) {
                 if (std::string(e.what()) == "encrypted is empty") {
@@ -369,14 +326,13 @@ namespace ringsnark::seal {
                     //  flag/subclass for the "0" ciphertext?
                     // This should only really be an issue when the SNARK is used in non-ZK mode;
                     // with ZK, the noise terms prevent the ctxt from being zero w.h.p.
-//                    return RingElem(0);
                     // Do nothing, curr_limb already holds all zeros.
                 } else {
                     throw e;
                 }
             }
 
-
+            curr_limb.resize(parms.poly_modulus_degree()); // Get rid of 0-padding
             coeffs.insert(coeffs.end(), curr_limb.begin(), curr_limb.end());
         }
         assert(coeffs.size() == parms.poly_modulus_degree() * parms.coeff_modulus().size());
@@ -417,15 +373,6 @@ namespace ringsnark::seal {
 
         if (r.is_scalar()) {
             return this->operator*=(r.to_poly());
-//            auto parms = get_contexts()[0].get_context_data(get_contexts()[0].first_parms_id())->parms();
-//            std::vector<uint64_t> values(parms.poly_modulus_degree());
-//            values[0] = r.get_scalar();
-//
-//            for (size_t i = 0; i < get_contexts().size(); i++) {
-//                encoders[i]->encode(values, ptxt);
-//                evaluators[i]->multiply_plain_inplace(ciphertexts[i], ptxt);
-//            }
-//            return *this;
         } else if (r.is_poly()) {
             assert(r.get_poly().get_coeff_modulus_count() == this->ciphertexts.size());
 

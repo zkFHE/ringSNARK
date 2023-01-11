@@ -58,7 +58,7 @@ namespace {
         }
 
         bool operator==(const PrimitiveWrapper<T> &rhs) const {
-            return abs(val - rhs.val) < 1e-3; // Approximate equality for double
+            return abs(val - rhs.val) <= 1e-3 * abs(val); // Approximate equality for double
         }
 
         bool operator!=(const PrimitiveWrapper<T> &rhs) const {

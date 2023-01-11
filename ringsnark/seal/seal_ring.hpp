@@ -75,7 +75,6 @@ namespace ringsnark::seal {
             // TODO: throw error if number of exceptional elements is less than required
             auto parms = get_context().get_context_data(get_context().first_parms_id())->parms();
             uint64_t q1 = parms.coeff_modulus()[0].value();
-            // TODO: Switch to C++20 and use std::bit_width()
             uint64_t bit_width = 1ULL + (uint64_t) std::floor(std::log2l(q1));
             uint64_t mask = (1 << (bit_width + 1)) - 1;
 
@@ -160,8 +159,6 @@ namespace ringsnark::seal {
             res->to_poly_inplace();
             return *res;
         }
-
-        [[nodiscard]] RingElem to_scalar() const;
 
         [[nodiscard]] size_t hash() const;
 
@@ -256,15 +253,25 @@ namespace ringsnark::seal {
             vector<::seal::SEALContext> enc_contexts;
             enc_contexts.reserve(ring_params.coeff_modulus().size());
 
-            auto coeff_modulus_max_bit_count = ::seal::CoeffModulus::MaxBitCount(ring_params.poly_modulus_degree());
-
+            // Automagically find suitable poly_modulus_degree and coeff_modulus
+            auto max_plain_modulus = ring_params.coeff_modulus()[ring_params.coeff_modulus().size() - 1].value();
+            //TODO: binary search to find optimal_poly_modulus_degree; this would require knowing how many additions need to be performed
+            auto poly_modulus_degree = 4 * ring_params.poly_modulus_degree();
+            auto coeff_modulus_max_bit_count = ::seal::CoeffModulus::MaxBitCount(poly_modulus_degree);
+            vector<int> coeff_modulus_bit_counts;
+            // TODO: distribute smoothly instead?
+            while (coeff_modulus_max_bit_count > 60) {
+                coeff_modulus_bit_counts.push_back(60);
+                coeff_modulus_max_bit_count -= 60;
+            }
+            coeff_modulus_bit_counts.push_back(coeff_modulus_max_bit_count);
+            auto coeff_modulus = ::seal::CoeffModulus::Create(poly_modulus_degree, coeff_modulus_bit_counts);
 
             for (size_t i = 0; i < ring_params.coeff_modulus().size(); i++) {
                 ::seal::EncryptionParameters enc_params(::seal::scheme_type::bgv);
-                size_t poly_modulus_degree = ring_params.poly_modulus_degree();
                 enc_params.set_poly_modulus_degree(poly_modulus_degree);
                 enc_params.set_plain_modulus(ring_params.coeff_modulus()[i].value());
-                enc_params.set_coeff_modulus(::seal::CoeffModulus::Create(poly_modulus_degree, {coeff_modulus_max_bit_count}));
+                enc_params.set_coeff_modulus(coeff_modulus);
                 ::seal::SEALContext context(enc_params);
 
                 if (context.first_context_data()->qualifiers().parameter_error !=
@@ -277,7 +284,7 @@ namespace ringsnark::seal {
                 // This should always hold, as ring_params.plain_modulus() = q_i is prime, and hence q_i = 1 mod 2N for a power-of-two N
                 assert(context.first_context_data()->qualifiers().using_batching == true);
 
-//                assert(context.using_keyswitching() == false); // TODO: can we always force this to be false while having enough noise budget for (potentially) many additions?
+//                assert(context.using_keyswitching() == false); //TODO: can we always force this to be false while having enough noise budget for (potentially) many additions?
 
                 enc_contexts.push_back(context);
             }
@@ -317,6 +324,20 @@ namespace ringsnark::seal {
          */
         [[nodiscard]] size_t size_in_bits() const;
 
+        [[nodiscard]] static size_t size_in_bits_pk(const PublicKey &pk) {
+            return 0;
+        }
+
+        [[nodiscard]] static size_t size_in_bits_sk(const SecretKey &sk) {
+            size_t size = 0;
+            for (size_t i = 0; i < sk.size(); i++) {
+                auto context = get_contexts()[i];
+                for (const auto &q_i: context.first_context_data()->parms().coeff_modulus()) {
+                    size += q_i.bit_count() * context.first_context_data()->parms().poly_modulus_degree();
+                }
+            }
+            return size;
+        }
 
         EncodingElem &operator+=(const EncodingElem &other);
 

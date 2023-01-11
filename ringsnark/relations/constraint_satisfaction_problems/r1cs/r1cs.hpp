@@ -78,9 +78,9 @@ namespace ringsnark {
 /**
  * A R1CS variable assignment is a vector of <RingT> elements that represents
  * a candidate solution to a R1CS constraint system (see below).
+ * This does not include the constant input 1, which is handled separately.
  */
 
-/* TODO: specify that it does *NOT* include the constant 1 */
     template<typename RingT>
     using r1cs_primary_input = std::vector<RingT>;
 
@@ -88,7 +88,7 @@ namespace ringsnark {
     using r1cs_auxiliary_input = std::vector<RingT>;
 
     template<typename RingT>
-    using r1cs_variable_assignment = std::vector<RingT>; /* note the changed name! (TODO: remove this comment after primary_input transition is complete) */
+    using r1cs_variable_assignment = std::vector<RingT>;
 
 /************************* R1CS constraint system ****************************/
 

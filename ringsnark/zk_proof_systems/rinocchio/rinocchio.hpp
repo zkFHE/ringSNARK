@@ -18,17 +18,26 @@ namespace ringsnark::rinocchio {
         const r1cs_constraint_system<RingT> constraint_system;
         const vector<EncT> s_pows, alpha_s_pows;
         const vector<EncT> beta_prods;
+        const EncT beta_rv_ts, beta_rw_ts, beta_ry_ts;
+        const EncT alpha_rv_ts, alpha_rw_ts, alpha_ry_ts; // Unused?
+        const vector<EncT> rv_vs, rw_ws, ry_ys; // Unused?
         const PublicKey pk_enc;
 
         proving_key(const ringsnark::r1cs_constraint_system<RingT> &constraint_system,
                     const vector<EncT> &s_pows,
                     const vector<EncT> &alpha_s_pows,
                     const vector<EncT> &beta_prods,
+                    const EncT beta_rv_ts, const EncT beta_rw_ts, const EncT beta_ry_ts,
+                    const EncT alpha_rv_ts, const EncT alpha_rw_ts, const EncT alpha_ry_ts,
+                    const vector<EncT> rv_vs, const vector<EncT> rw_ws, const vector<EncT> ry_ys,
                     const PublicKey &pk_enc) :
                 constraint_system(constraint_system),
                 s_pows(s_pows),
                 alpha_s_pows(alpha_s_pows),
                 beta_prods(beta_prods),
+                beta_rv_ts(beta_rv_ts), beta_rw_ts(beta_rw_ts), beta_ry_ts(beta_ry_ts),
+                alpha_rv_ts(alpha_rv_ts), alpha_rw_ts(alpha_rw_ts), alpha_ry_ts(alpha_ry_ts),
+                rv_vs(rv_vs), rw_ws(rw_ws), ry_ys(ry_ys),
                 pk_enc(pk_enc) {
             assert(s_pows.size() == constraint_system.num_constraints() + 1);
             assert(alpha_s_pows.size() == constraint_system.num_constraints() + 1);
@@ -38,8 +47,9 @@ namespace ringsnark::rinocchio {
         [[nodiscard]] size_t size_in_bits() const override {
             return s_pows.size() * s_pows[0].size_in_bits()
                    + alpha_s_pows.size() * alpha_s_pows[0].size_in_bits()
-                   + beta_prods.size() * beta_prods[0].size_in_bits();
-            //TODO: + pk_enc.size_in_bits();
+                   + beta_prods.size() * beta_prods[0].size_in_bits()
+                   + beta_rv_ts.size_in_bits() + beta_rw_ts.size_in_bits() + beta_ry_ts.size_in_bits()
+                   + EncT::size_in_bits_pk(pk_enc);
         }
     };
 
@@ -74,8 +84,8 @@ namespace ringsnark::rinocchio {
 
         [[nodiscard]] size_t size_in_bits() const override {
             return s.size_in_bits() + alpha.size_in_bits() + beta.size_in_bits() +
-                   r_v.size_in_bits() + r_w.size_in_bits() + r_y.size_in_bits();
-            // TODO: +sk_enc.size_in_bits();
+                   r_v.size_in_bits() + r_w.size_in_bits() + r_y.size_in_bits() +
+                   EncT::size_in_bits_sk(sk_enc);
         }
     };
 

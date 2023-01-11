@@ -3,6 +3,7 @@
 #include "polynomials.hpp"
 #include "seal/seal.h"
 #include "../seal/seal_ring.hpp"
+#include "evaluation_domain.hpp"
 #include "test_utils.hpp"
 
 ::seal::SEALContext get_context() {
@@ -49,6 +50,34 @@ namespace {
 
         for (int i = 0; i < n; i++) {
             EXPECT_EQ(coeffs[i], coeffs_interpolated[i]);
+        }
+    }
+
+    TYPED_TEST(InterpolationTest, TestLagrangePolynomials) {
+        size_t n = 8;
+        auto domain = ringsnark::get_evaluation_domain<TypeParam>(n);
+        vector<TypeParam> coeffs(n);
+        vector<TypeParam> x(n);
+        vector<TypeParam> y(n);
+        for (size_t i = 0; i < n; i++) {
+            coeffs[i] = (i == 0) ? TypeParam::zero() : coeffs[i - 1] + TypeParam::one();
+            x[i] = domain->get_domain_element(i);
+        }
+        for (size_t i = 0; i < n; i++) {
+            y[i] = eval(coeffs, x[i]);
+        }
+
+        for (size_t i = 0; i < 20; i++) {
+            TypeParam s(domain->m + i);
+            vector<TypeParam> lagrange = domain->evaluate_all_lagrange_polynomials(s);
+
+            TypeParam res_interpolated = TypeParam::zero();
+            for (size_t j = 0; j < n; j++) {
+                res_interpolated += y[j] * lagrange[j];
+            }
+            TypeParam res = eval(coeffs, s);
+
+            EXPECT_EQ(res_interpolated, res);
         }
     }
 

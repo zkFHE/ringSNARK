@@ -10,7 +10,7 @@
 #ifndef R1CS_TO_QRP_TCC_
 #define R1CS_TO_QRP_TCC_
 
-#include "evaluation_domain.hpp"
+#include "ringsnark/util/evaluation_domain.hpp"
 
 namespace ringsnark {
 
@@ -28,24 +28,12 @@ namespace ringsnark {
  */
     template<typename RingT>
     qrp_instance<RingT> r1cs_to_qrp_instance_map(const r1cs_constraint_system<RingT> &cs) {
-//        const std::shared_ptr<evaluation_domain<RingT>> domain = get_evaluation_domain<RingT>(
-//                cs.num_constraints() + cs.num_inputs() + 1);
         const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         std::vector<std::map<size_t, RingT>> A_in_Lagrange_basis(cs.num_variables() + 1);
         std::vector<std::map<size_t, RingT>> B_in_Lagrange_basis(cs.num_variables() + 1);
         std::vector<std::map<size_t, RingT>> C_in_Lagrange_basis(cs.num_variables() + 1);
 
-        /**
-         * add and process the constraints
-         *     input_i * 0 = 0
-         * to ensure soundness of input consistency
-         */
-        // TODO: check if this is also relevant in the ring, if this should be removed, or if it should be handled at a different abstraction level (e.g., in the R1CS generation)
-        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
-            A_in_Lagrange_basis[i][cs.num_constraints() + i] = RingT::one();
-        }
-        /* process all other constraints */
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
             for (size_t j = 0; j < cs.constraints[i].a.terms.size(); ++j) {
                 A_in_Lagrange_basis[cs.constraints[i].a.terms[j].index][i] += cs.constraints[i].a.terms[j].coeff;
@@ -87,30 +75,18 @@ namespace ringsnark {
     template<typename RingT>
     qrp_instance_evaluation<RingT> r1cs_to_qrp_instance_map_with_evaluation(const r1cs_constraint_system<RingT> &cs,
                                                                             const RingT &t) {
-        const std::shared_ptr<evaluation_domain<RingT>> domain = get_evaluation_domain<RingT>(
-                cs.num_constraints() + cs.num_inputs() + 1
-        );
-//        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
+        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         std::vector<RingT> At, Bt, Ct, Ht;
 
         At.resize(cs.num_variables() + 1, RingT::zero());
         Bt.resize(cs.num_variables() + 1, RingT::zero());
         Ct.resize(cs.num_variables() + 1, RingT::zero());
-        Ht.reserve(domain->m + 1); // TODO: do we need that many monomials? Shouldn't this be d (QAP degree) instead?
+        Ht.reserve(domain->m + 1);
 
         const RingT Zt = domain->compute_vanishing_polynomial(t);
 
         const std::vector<RingT> u = domain->evaluate_all_lagrange_polynomials(t);
-        /**
-         * add and process the constraints
-         *     input_i * 0 = 0
-         * to ensure soundness of input consistency
-         */
-        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
-            At[i] = u[cs.num_constraints() + i];
-        }
-        /* process all other constraints */
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
             for (size_t j = 0; j < cs.constraints[i].a.terms.size(); ++j) {
                 At[cs.constraints[i].a.terms[j].index] += u[i] * cs.constraints[i].a.terms[j].coeff;
@@ -130,9 +106,6 @@ namespace ringsnark {
             Ht.emplace_back(ti);
             ti *= t;
         }
-        // libff::leave_block("Compute evaluations of A, B, C, H at t");
-
-        // libff::leave_block("Call to r1cs_to_qrp_instance_map_with_evaluation");
 
         return qrp_instance_evaluation<RingT>(domain,
                                               cs.num_variables(),
@@ -148,7 +121,6 @@ namespace ringsnark {
 
 
 
-    // TODO: update description
 /**
  * Witness map for the R1CS-to-QRP reduction.
  *
@@ -185,10 +157,11 @@ namespace ringsnark {
                                                const RingT &d1,
                                                const RingT &d2,
                                                const RingT &d3) {
+#ifdef DEBUG
         /* sanity check */
         assert(cs.is_satisfied(primary_input, auxiliary_input));
+#endif
 
-//        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints() + cs.num_inputs() + 1);
         const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
 
         r1cs_variable_assignment<RingT> full_variable_assignment = primary_input;
@@ -198,31 +171,36 @@ namespace ringsnark {
         /* Compute coefficients for A_mid, B_mid, C_mid */
         r1cs_variable_assignment<RingT> auxiliary_assignment(primary_input.size(), RingT::zero());
         auxiliary_assignment.insert(auxiliary_assignment.end(), auxiliary_input.begin(), auxiliary_input.end());
-        std::vector<RingT> a_mid, b_mid, c_mid;
-        a_mid.reserve(cs.num_constraints());
-        b_mid.reserve(cs.num_constraints());
-        c_mid.reserve(cs.num_constraints());
+        std::vector<RingT> a_mid_, b_mid_, c_mid_;
+        a_mid_.reserve(cs.num_constraints());
+        b_mid_.reserve(cs.num_constraints());
+        c_mid_.reserve(cs.num_constraints());
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
-            a_mid.push_back(cs.constraints[i].a.evaluate(auxiliary_assignment));
-            b_mid.push_back(cs.constraints[i].b.evaluate(auxiliary_assignment));
-            c_mid.push_back(cs.constraints[i].c.evaluate(auxiliary_assignment));
+            a_mid_.push_back(cs.constraints[i].a.evaluate(auxiliary_assignment));
+            b_mid_.push_back(cs.constraints[i].b.evaluate(auxiliary_assignment));
+            c_mid_.push_back(cs.constraints[i].c.evaluate(auxiliary_assignment));
         }
+
+        vector<RingT> xs(domain->m);
+        for (size_t i = 0; i < domain->m; i++) { xs[i] = domain->get_domain_element(i); }
+        auto a_mid = interpolate(xs, a_mid_);
+        auto b_mid = interpolate(xs, b_mid_);
+        auto c_mid = interpolate(xs, c_mid_);
+
 
         // Compute coefficients for vanishing polynomial Z
         std::vector<RingT> Z = domain->vanishing_polynomial();
 
         // Compute coefficients for H
         std::vector<RingT> aA(domain->m, RingT::zero()), aB(domain->m, RingT::zero()), aC(domain->m, RingT::zero());
-
-//        for (size_t i = 0; i <= cs.num_inputs(); ++i) {
-//            aA[i + cs.num_constraints()] = (i > 0 ? full_variable_assignment[i - 1] : RingT::one());
-//        }
-        /* account for all other constraints */
         for (size_t i = 0; i < cs.num_constraints(); ++i) {
             aA[i] += cs.constraints[i].a.evaluate(full_variable_assignment);
             aB[i] += cs.constraints[i].b.evaluate(full_variable_assignment);
             aC[i] += cs.constraints[i].c.evaluate(full_variable_assignment);
         }
+        aA = interpolate(xs, aA);
+        aB = interpolate(xs, aB);
+        aC = interpolate(xs, aC);
 
         std::vector<RingT> coefficients_for_H(domain->m + 1, RingT::zero());
 #ifdef MULTICORE

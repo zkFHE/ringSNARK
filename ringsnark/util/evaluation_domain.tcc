@@ -1,4 +1,4 @@
-#include <ringsnark/util/polynomials.hpp>
+#include "polynomials.hpp"
 #include <unordered_set>
 #include <stdexcept>
 
@@ -17,6 +17,9 @@ namespace ringsnark {
 
     template<typename RingT>
     vector<RingT> evaluation_domain<RingT>::evaluate_all_lagrange_polynomials(const RingT &t) const {
+        if (std::find(values.begin(), values.end(), t) != values.end()) {
+            throw std::invalid_argument("t cannot be one of the values in the domain");
+        }
         // TODO: Optimize
         // lagrange[j] = \prod_{i=0,i!=j}^m (t-x_i) / (x_j-x_i)
         vector<RingT> lagrange(m);
@@ -77,8 +80,8 @@ namespace ringsnark {
 
     template<typename RingT>
     shared_ptr<evaluation_domain<RingT>> get_evaluation_domain(const size_t min_size) {
-        shared_ptr<evaluation_domain < RingT>>
-        shared_domain(new evaluation_domain<RingT>(min_size));
+        shared_ptr<evaluation_domain<RingT>>
+                shared_domain(new evaluation_domain<RingT>(min_size));
         return shared_domain;
     }
 }
