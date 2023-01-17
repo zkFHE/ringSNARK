@@ -1,7 +1,9 @@
 #include <iostream>
 
 #include "seal/seal.h"
-#include "ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp"
+#include <ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp>
+#include <ringsnark/zk_proof_systems/groth16/groth16.hpp>
+
 #include "poly_arith.h"
 #include <ringsnark/seal/seal_ring.hpp>
 #include <ringsnark/gadgetlib/protoboard.hpp>
@@ -107,18 +109,32 @@ int main() {
     cout << "#Inputs\t" << pb.num_inputs() << endl;
     cout << "#Variables\t" << pb.num_variables() << endl;
     cout << "#Constraints\t" << pb.num_constraints() << endl;
-    assert(pb.is_satisfied());
-    cout << "R1CS satisfied: " << std::boolalpha << true << endl;
+    cout << "R1CS satisfied: " << std::boolalpha << pb.is_satisfied() << endl;
     cout << endl;
 
-    // Generate CRS
-    const auto keypair = ringsnark::rinocchio::generator<R, E>(pb.get_constraint_system());
-    cout << "Size of pk:\t" << keypair.pk.size_in_bits() << " bits" << endl;
-    cout << "Size of vk:\t" << keypair.vk.size_in_bits() << " bits" << endl;
+    {
+        cout << "=== Rinocchio ===" << endl;
+        const auto keypair = ringsnark::rinocchio::generator<R, E>(pb.get_constraint_system());
+        cout << "Size of pk:\t" << keypair.pk.size_in_bits() << " bits" << endl;
+        cout << "Size of vk:\t" << keypair.vk.size_in_bits() << " bits" << endl;
 
-    const auto proof = ringsnark::rinocchio::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
-    cout << "Size of proof:\t" << proof.size_in_bits() << " bits" << endl;
+        const auto proof = ringsnark::rinocchio::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
+        cout << "Size of proof:\t" << proof.size_in_bits() << " bits" << endl;
 
-    const bool verif = ringsnark::rinocchio::verifier(keypair.vk, pb.primary_input(), proof);
-    cout << "Verification passed: " << std::boolalpha << verif << endl;
+        const bool verif = ringsnark::rinocchio::verifier(keypair.vk, pb.primary_input(), proof);
+        cout << "Verification passed: " << std::boolalpha << verif << endl;
+    }
+    {
+        cout << "=============" << endl;
+        cout << "=== RingGroth16 ===" << endl;
+        const auto keypair = ringsnark::groth16::generator<R, E>(pb.get_constraint_system());
+        cout << "Size of pk:\t" << keypair.pk.size_in_bits() << " bits" << endl;
+        cout << "Size of vk:\t" << keypair.vk.size_in_bits() << " bits" << endl;
+
+        const auto proof = ringsnark::groth16::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
+        cout << "Size of proof:\t" << proof.size_in_bits() << " bits" << endl;
+
+        const bool verif = ringsnark::groth16::verifier(keypair.vk, pb.primary_input(), proof);
+        cout << "Verification passed: " << std::boolalpha << verif << endl;
+    }
 }
