@@ -1,254 +1,140 @@
 #include <iostream>
 
 #include "seal/seal.h"
-#include "ring.h"
-#include "ring_snark.h"
+#include <ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp>
+#include <ringsnark/zk_proof_systems/groth16/groth16.hpp>
+
 #include "poly_arith.h"
-#include "seal_prover.h"
-#include "seal_verifier.h"
+#include <ringsnark/seal/seal_ring.hpp>
+#include <ringsnark/gadgetlib/protoboard.hpp>
 
 using namespace std;
 using namespace seal;
-using namespace rinocchio;
-using E = SealPoly;
-using R = SealPoly;
-using A = uint64_t;
-
-// Circuit is x6=(x1+x2)*x5; x5=(x3*x4)
-bool prove_circuit(SEALContext &context, EncryptionParameters &params, vector<SealPoly> &values_io,
-                   vector<SealPoly> &values_mid) {
-    assert(all_of(values_io.begin(), values_io.end(), [](const E &e) { return e.is_ntt_form(); }));
-    assert(all_of(values_mid.begin(), values_mid.end(), [](const E &e) { return e.is_ntt_form(); }));
-
-    // Parameters
-    // Randomly pick r5, r6 <- A
-    uint64_t q1 = params.coeff_modulus()[0].value();
-    uint64_t r5, r6;
-    r5 = 2;//rand() % (p1.value() - 1) + 1;
-    do {
-        r6 = 3; //rand() % (p1.value() - 1) + 1;
-    } while (r5 == r6);
-    uint64_t inv = 1; // (r6-r5)^-1 = 1, since (3-2) * 1 == 1 mod q
-    uint64_t min_inv = (q1 - inv) % q1;
-    uint64_t r5_inv = (r5 * inv) % q1;
-    uint64_t min_r5_inv = (q1 - r5_inv) % q1;
-    uint64_t r5_r6 = (r5 * r6) % q1;
-
-    R c1 = values_io[0];
-    R c2 = values_io[1];
-    R c3 = values_io[2];
-    R c4 = values_io[3];
-    R c5 = values_mid[0];
-    R c6 = values_io[4];
-
-    auto start = chrono::high_resolution_clock::now();
-    vector<vector<A>> v{
-            vector<A>{min_r5_inv, inv},
-            vector<A>{min_r5_inv, inv},
-            vector<A>{(1 + r5_inv) % q1, min_inv},
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{0, 0}
-    };
-
-    vector<vector<A>> w{
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{(1 + r5_inv) % q1, min_inv},
-            vector<A>{min_r5_inv, inv},
-            vector<A>{0, 0}
-    };
-
-    vector<vector<A>> y{
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{0, 0},
-            vector<A>{(1 + r5_inv) % q1, min_inv},
-            vector<A>{min_r5_inv, inv}
-    };
-
-    uint64_t min_r5_min_r6 = (q1 - r5) % q1;
-    min_r5_min_r6 = (q1 + min_r5_min_r6 - r6) % q1;
-    vector<A> t{r5_r6, min_r5_min_r6, 1};
-
-    // h: [((r6-r5)^-1)^2 * (c1+c2-c3) * (c5-c4)]
-    R h0(c1);
-    h0.add_inplace(c2);
-    h0.subtract_inplace(c3);
-    R tmp(c5);
-    tmp.subtract_inplace(c4);
-
-    h0.multiply_inplace(tmp);
-
-    uint64_t scalar = (inv * inv) % q1;
-    h0.multiply_scalar_inplace(scalar);
-
-    Poly<R, A> h{vector<R>{h0}};
-
-    vector<size_t> indices_io{0, 1, 2, 3, 5};
-    vector<size_t> indices_mid{4};
-    vector<R> values{c1, c2, c3, c4, c5, c6};
-    SnarkParameters<R, A> snarkParameters(context, values, indices_io, indices_mid, v, w, y, t, h);
-
-    SealProver prover;
-//    Verifier<E, R, A> verifier(snarkParameters, params);
-    SealVerifier verifier(snarkParameters, params);
-
-
-    // TODO
-    const R &alpha(c1);
-
-    A s = 3;
-    const R &beta(c2);
-
-    R r_v(c3);
-    const R &r_w(c4);
-    R r_y(r_v);
-    r_y.multiply_inplace(r_w);
-
-    auto end = chrono::high_resolution_clock::now();
-    cout << "=======================================" << endl;
-    cout << "QRP setup\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl;
-
-    start = chrono::high_resolution_clock::now();
-    auto vk = verifier.generate_vk(snarkParameters, s, alpha, beta, r_v, r_w, r_y);
-    end = chrono::high_resolution_clock::now();
-    cout << "Setup (CRS, vk)\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl;
-
-
-    auto crs = vk.crs;
-
-    start = chrono::high_resolution_clock::now();
-    auto proof = prover.prove(snarkParameters, crs);
-    end = chrono::high_resolution_clock::now();
-    cout << "Prove\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl;
-
-    start = chrono::high_resolution_clock::now();
-    bool verified = verifier.verify(vk, snarkParameters, proof);
-    end = chrono::high_resolution_clock::now();
-    cout << "Verify\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl << flush;
-    return verified;
-}
 
 int main() {
-    EncryptionParameters params(scheme_type::bfv);
-    auto poly_modulus_degree = (size_t) pow(2, 12);
+    EncryptionParameters params(scheme_type::bgv);
+    auto poly_modulus_degree = (size_t) pow(2, 11);
     params.set_poly_modulus_degree(poly_modulus_degree);
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
     params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
     SEALContext context(params);
 
-    cout << "Parameter validation (success): "
-         << context.parameter_error_message() << endl;
-    auto qualifiers = context.first_context_data()->qualifiers();
-    cout << "Batching enabled: " << boolalpha << qualifiers.using_batching
-         << endl;
+    typedef ringsnark::seal::RingElem R;
+    typedef ringsnark::seal::EncodingElem E;
 
-    KeyGenerator keygen(context);
-    const SecretKey &secret_key = keygen.secret_key();
-    PublicKey public_key;
-    keygen.create_public_key(public_key);
-    RelinKeys relin_keys;
-    keygen.create_relin_keys(relin_keys);
-    BatchEncoder batch_encoder(context);
+    R::set_context(context);
+    E::set_context();
 
-    Encryptor encryptor(context, public_key);
-    Evaluator evaluator(context);
-    Decryptor decryptor(context, secret_key);
+    const size_t N = context.get_context_data(context.first_parms_id())->parms().poly_modulus_degree();
+    const size_t n = 6;
+    ringsnark::protoboard<R> pb;
 
-    size_t slot_count = batch_encoder.slot_count();
-    size_t row_size = slot_count / 2;
+    // Set public values
+    ringsnark::pb_variable_array<R> vars(n, ringsnark::pb_variable<R>());
+    vars.allocate(pb, n, "x");
+    pb.set_input_sizes(n - 1); // vars[4] is private, all other values are public
 
-    vector<uint64_t> pod_matrix(slot_count, 0ULL);
-    for (size_t i = 0; i < row_size; i++) {
-        pod_matrix[i] = (uint64_t) i;
-        pod_matrix[row_size + i] = (uint64_t) 3 * i;
+    // Set constraints
+    // Inputs:  x0, x1, x2, x3
+    // Outputs: x4
+    // Private: x5
+    // x5 := x2 * x3
+    // x4 := (x0 + x1) * x5
+    pb.add_r1cs_constraint(ringsnark::r1cs_constraint<R>(vars[2], vars[3], vars[5]));
+    pb.add_r1cs_constraint(ringsnark::r1cs_constraint<R>(vars[0] + vars[1], vars[5], vars[4]));
+
+    // Set values
+    vector<ringsnark::seal::RingElem> values(n);
+    {
+        auto encoder = BatchEncoder(context);
+        auto tables = context.get_context_data(context.first_parms_id())->small_ntt_tables();
+
+        vector<uint64_t> vs(N);
+        Plaintext ptxt;
+        vector<::polytools::SealPoly> polys(n, ::polytools::SealPoly(context));
+
+        // Inputs
+        vs[0] = 2;
+        encoder.encode(vs, ptxt);
+        auto poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[0] = poly;
+        values[0] = ringsnark::seal::RingElem(poly);
+//        values[0] = ringsnark::seal::RingElem(vs[0]);
+
+        vs[1] = 3;
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[1] = poly;
+        values[1] = ringsnark::seal::RingElem(poly);
+//        values[1] = ringsnark::seal::RingElem(vs[1]);
+
+        vs[2] = 4;
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[2] = poly;
+        values[2] = ringsnark::seal::RingElem(poly);
+//        values[2] = ringsnark::seal::RingElem(vs[2]);
+
+        vs[3] = 5;
+        encoder.encode(vs, ptxt);
+        poly = polytools::SealPoly(context, ptxt, &(context.first_parms_id()));
+        poly.ntt_inplace(tables);
+        polys[3] = poly;
+        values[3] = ringsnark::seal::RingElem(poly);
+//        values[3] = ringsnark::seal::RingElem(vs[3]);
+
+        // Intermediate values
+        vs[5] = vs[2] * vs[3];
+        poly = ::polytools::SealPoly(polys[2]);
+        poly.multiply_inplace(polys[3]);
+        polys[5] = poly;
+        values[5] = ringsnark::seal::RingElem(poly);
+//        values[5] = ringsnark::seal::RingElem(vs[5]);
+
+        // Outputs
+        vs[4] = (vs[0] + vs[1]) * vs[5];
+        poly = ::polytools::SealPoly(polys[0]);
+        poly.add_inplace(polys[1]);
+        poly.multiply_inplace(polys[5]);
+        polys[4] = poly;
+        values[4] = ringsnark::seal::RingElem(poly);
+//        values[4] = ringsnark::seal::RingElem(vs[4]);
     }
-
-    Plaintext x_plain;
-    batch_encoder.encode(pod_matrix, x_plain);
-
-    for (size_t i = 0; i < row_size; i++) {
-        pod_matrix[i] = (uint64_t) i + 1;
-        pod_matrix[row_size + i] = (uint64_t) 2 * i;
+    for (size_t i = 0; i < n; i++) {
+        pb.val(vars[i]) = values[i];
     }
+    cout << "#Inputs\t" << pb.num_inputs() << endl;
+    cout << "#Variables\t" << pb.num_variables() << endl;
+    cout << "#Constraints\t" << pb.num_constraints() << endl;
+    cout << "R1CS satisfied: " << std::boolalpha << pb.is_satisfied() << endl;
+    cout << endl;
 
-    Plaintext y_plain;
-    batch_encoder.encode(pod_matrix, y_plain);
+    {
+        cout << "=== Rinocchio ===" << endl;
+        const auto keypair = ringsnark::rinocchio::generator<R, E>(pb.get_constraint_system());
+        cout << "Size of pk:\t" << keypair.pk.size_in_bits() << " bits" << endl;
+        cout << "Size of vk:\t" << keypair.vk.size_in_bits() << " bits" << endl;
 
-    Ciphertext x_enc, y_enc;
-    encryptor.encrypt(x_plain, x_enc);
-    encryptor.encrypt(y_plain, y_enc);
+        const auto proof = ringsnark::rinocchio::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
+        cout << "Size of proof:\t" << proof.size_in_bits() << " bits" << endl;
 
+        const bool verif = ringsnark::rinocchio::verifier(keypair.vk, pb.primary_input(), proof);
+        cout << "Verification passed: " << std::boolalpha << verif << endl;
+    }
+    {
+        cout << "=============" << endl;
+        cout << "=== RingGroth16 ===" << endl;
+        const auto keypair = ringsnark::groth16::generator<R, E>(pb.get_constraint_system());
+        cout << "Size of pk:\t" << keypair.pk.size_in_bits() << " bits" << endl;
+        cout << "Size of vk:\t" << keypair.vk.size_in_bits() << " bits" << endl;
 
-    auto start = chrono::high_resolution_clock::now();
+        const auto proof = ringsnark::groth16::prover(keypair.pk, pb.primary_input(), pb.auxiliary_input());
+        cout << "Size of proof:\t" << proof.size_in_bits() << " bits" << endl;
 
-    SealPoly x1(context, x_enc, 0);
-    SealPoly x2(context, x_enc, 1);
-    SealPoly x3(context, y_enc, 0);
-    SealPoly x4(context, y_enc, 1);
-
-    auto tables = context.get_context_data(x1.get_parms_id())->small_ntt_tables();
-
-    x1.ntt_inplace(tables);
-    x2.ntt_inplace(tables);
-    x3.ntt_inplace(tables);
-    x4.ntt_inplace(tables);
-    auto end = chrono::high_resolution_clock::now();
-    cout << "=======================================" << endl;
-    cout << "Eval: 4 NTT\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl;
-
-    start = chrono::high_resolution_clock::now();
-
-    SealPoly x5(x3);
-    x5.multiply_inplace(x4);
-
-    SealPoly tmp(x1);
-    tmp.add_inplace(x2);
-
-    SealPoly x6(x5);
-    x6.multiply_inplace(tmp);
-
-    end = chrono::high_resolution_clock::now();
-    cout << "=======================================" << endl;
-    cout << "Eval{x6=(x1+x2)*x5; x5=x3*x4}\t" << chrono::duration_cast<chrono::microseconds>(end - start).count()
-         << " us"
-         << endl;
-
-    vector<SealPoly> values_io{x1, x2, x3, x4, x6};
-    vector<SealPoly> values_mid{x5};
-
-    bool verified = prove_circuit(context, params, values_io, values_mid);
-    cout << "Verification: " << verified << endl;
-
-
-    /**/
-//    Plaintext x_ptxt;
-//    decryptor.decrypt(x_enc, x_ptxt);
-//    vector<uint64_t> x_vec;
-//    batch_encoder.decode(x_ptxt, x_vec);
-//    cout << x_vec[0] << endl;
-//
-//    Plaintext zero;
-//    vector<uint64_t> zero_vec(params.poly_modulus_degree());
-//    batch_encoder.encode(zero_vec, zero);
-//    evaluator.multiply_plain_inplace(x_enc, zero);
-//    decryptor.decrypt(x_enc, x_ptxt);
-//    vector<uint64_t> x_vec2;
-//    batch_encoder.decode(x_ptxt, x_vec2);
-//    cout << x_vec2[0] << endl;
-
-    return verified;
+        const bool verif = ringsnark::groth16::verifier(keypair.vk, pb.primary_input(), proof);
+        cout << "Verification passed: " << std::boolalpha << verif << endl;
+    }
 }
