@@ -2,6 +2,10 @@
 This repository contains an implementation of the Rinocchio [[1]](#1) protocol (SNARK for Ring Arithmetic) for general rings. 
 This repository also contains instantiates the general protocol for rings $Z_{\prod_i q_i}[X]/\langle X^N+1\rangle$ as used in Fully Homomorphic Encryption (FHE), notably those used by the SEAL [[2]](#2) library. 
 
+For circuit generation and gadget handling, this library uses a similar interface and reuses part of [libsnark](https://github.com/scipr-lab/libsnark).
+
+For more details about the optimizations to the Rinocchio protocol implemented in this library, for example use cases, and for a comparison with other zero-knowledge proof systems, have a look at [our paper on verifiable FHE](https://arxiv.org/abs/2301.07041). 
+
 
 ## About
 ringSNARK is being developed in the [Privacy-Preserving Systems Lab](https://pps-lab.com) at [ETH Zurich](https://ethz.ch/en.html) by [Christian Knabenhans](https://cknabs.github.io). 
