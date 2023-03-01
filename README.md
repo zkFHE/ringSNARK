@@ -2,10 +2,6 @@
 This repository contains an implementation of the Rinocchio [[1]](#1) protocol (SNARK for Ring Arithmetic) for general rings. 
 This repository also contains instantiates the general protocol for rings $Z_{\prod_i q_i}[X]/\langle X^N+1\rangle$ as used in Fully Homomorphic Encryption (FHE), notably those used by the SEAL [[2]](#2) library. 
 
-For circuit generation and gadget handling, this library uses a similar interface and reuses part of [libsnark](https://github.com/scipr-lab/libsnark).
-
-For more details about the optimizations to the Rinocchio protocol implemented in this library, for example use cases, and for a comparison with other zero-knowledge proof systems, have a look at [our paper on verifiable FHE](https://arxiv.org/abs/2301.07041). 
-
 
 ## About
 ringSNARK is being developed in the [Privacy-Preserving Systems Lab](https://pps-lab.com) at [ETH Zurich](https://ethz.ch/en.html) by [Christian Knabenhans](https://cknabs.github.io). 
@@ -47,15 +43,21 @@ make
 `example.cpp` shows how to instantiate the code to prove and verify a small (1 addition, 2 multiplications) circuit over FHE rings. 
 
 ## Roadmap
-This code is being actively developed, with major changes in the interfaces coming soon. Here is the short-term implementation plan: 
+This code is being actively developed, and here is a tentative implementation plan: 
 
-- [ ] Migrate to a libsnark-inspired interface
-  - [ ] Implement circuit -> R1CS -> QRP generation pipeline
-  - [ ] Change interfaces to expose same API as libsnark
-  - [ ] Abstract random sampling inside keypair generation process
-- [ ] Implement optimized FHE-ring encoding/decoding
-- [ ] Add full zero-knowledge support
-- [ ] Analyze and implement RingGroth16 in addition to Rinocchio
+- [x] Migrate to a libsnark-inspired interface
+  - [x] Implement circuit -> R1CS -> QRP generation pipeline
+  - [x] Change interfaces to expose same API as libsnark
+  - [x] Abstract random sampling inside keypair generation process
+- [x] Implement optimized FHE-ring encoding/decoding
+- [x] Add full zero-knowledge support
+- [x] Analyze and implement RingGroth16 in addition to Rinocchio
+- [ ] Add common gadgets for FHE operations
+- [ ] Add wrapper around FHE evaluator that automatically calls the corresponding gadgets
+- [ ] Add more ring arithmetic backends
+  - [ ] for SEAL without `polytools`
+  - [ ] for OpenFHE
+  - [ ] for Lattigo and tfhe-rs (?)
 
 ## References
 
