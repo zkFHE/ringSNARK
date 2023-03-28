@@ -344,12 +344,14 @@ namespace ringsnark::seal {
         assert(this->ciphertexts.size() == other.ciphertexts.size());
         assert(this->ciphertexts.size() == get_contexts().size());
         for (size_t i = 0; i < this->ciphertexts.size(); i++) {
+            const bool was_ntt = this->ciphertexts[i].is_ntt_form();
             try {
                 evaluators[i]->add_inplace(this->ciphertexts[i], other.ciphertexts[i]);
             } catch (std::logic_error &e) {
                 if (std::string(e.what()) == "result ciphertext is transparent") {
                     // Explicitly assign a zero-ciphertext
                     this->ciphertexts[i] = ::seal::Ciphertext(get_contexts()[i], get_contexts()[i].first_parms_id());
+                    this->ciphertexts[i].is_ntt_form() = was_ntt;
                 } else {
                     throw e;
                 }
@@ -366,7 +368,9 @@ namespace ringsnark::seal {
             ciphertexts.resize(get_contexts().size());
             for (size_t i = 0; i < get_contexts().size(); i++) {
                 auto context = get_contexts()[i];
+                const bool was_ntt = ciphertexts[i].is_ntt_form();
                 ciphertexts[i] = ::seal::Ciphertext(context, context.first_parms_id());
+                ciphertexts[i].is_ntt_form() = was_ntt;
             }
             return *this;
         }

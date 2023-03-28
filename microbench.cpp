@@ -133,6 +133,9 @@ int main() {
 
     BatchEncoder batch_encoder2(context2);
 
+    if (x1.is_ntt_form()) { // Ensure x1 is in non-NTT form
+        x1.intt_inplace(tables);
+    }
 
     size_t time_NTT = 0;
     for (int i = 0; i < NUM_REPEATS; i++) {
@@ -143,9 +146,12 @@ int main() {
 
         x1.intt_inplace(tables);
     }
-    x1.ntt_inplace(tables);
-    x2.ntt_inplace(tables);
 
+    // Ensure both x1 and x2 are in NTT form
+    x1.ntt_inplace(tables);
+    if (!x2.is_ntt_form()) {
+        x2.ntt_inplace(tables);
+    }
 
     for (int i = 0; i < NUM_REPEATS; i++) {
         start = chrono::high_resolution_clock::now();

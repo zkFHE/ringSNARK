@@ -23,9 +23,12 @@ The ringSNARK library relies on the following:
 - C++ build environment
 - CMake build infrastructure
 
+### Requirements
+This library requires the `boost` C++ library. 
+
 Optionally, if support for FHE rings is needed, the following are required: 
-- SEAL
-- polytools
+- [SEAL](https://github.com/microsoft/SEAL) (tested with versions 4.0.0 to 4.1.1)
+- [SEAL-Polytools](https://MarbleHE/SEAL-Polytools)
 
 ### Building
 ```bash
@@ -63,4 +66,4 @@ This code is being actively developed, and here is a tentative implementation pl
 
 <a id="1">[1]</a> C. Ganesh, A. Nitulescu, and E. Soria-Vazquez, Rinocchio: SNARKs for Ring Arithmetic. Cryptology ePrint Archive, Paper 2021/322, 2021. [Online]. Available: https://eprint.iacr.org/2021/322
 
-<a id="2">[2]</a> Microsoft SEAL (release 4.0). https://github.com/Microsoft/SEAL, 2022. [Online]. Available: https://github.com/Microsoft/SEAL 
+<a id="2">[2]</a> Microsoft SEAL. https://github.com/Microsoft/SEAL, 2022. [Online]. Available: https://github.com/Microsoft/SEAL 
