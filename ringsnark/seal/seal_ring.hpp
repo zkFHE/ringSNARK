@@ -93,7 +93,7 @@ namespace ringsnark::seal {
             auto parms = get_context().get_context_data(get_context().first_parms_id())->parms();
             vector<uint64_t> coeffs(parms.poly_modulus_degree() * parms.coeff_modulus().size());
             ::seal::util::sample_poly_uniform(prng, parms, coeffs.data());
-            return RingElem(polytools::SealPoly(get_context(), coeffs, get_context().first_parms_id()));
+            return RingElem(polytools::SealPoly(get_context(), coeffs, &get_context().first_parms_id()));
         }
 
         static RingElem random_invertible_element() {

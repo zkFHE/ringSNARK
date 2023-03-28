@@ -30,5 +30,9 @@ else ()
     message(FATAL_ERROR "Cannot find target SEAL::seal or SEAL::seal_shared")
 endif ()
 
+find_package(Boost 1.80 COMPONENTS math)
+
 ## lib: polytools
 target_link_libraries(ringsnark INTERFACE polytools)
+target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
+target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})

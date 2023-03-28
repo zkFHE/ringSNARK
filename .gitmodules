@@ -1,6 +1,6 @@
 [submodule "depends/polytools"]
-	path = depends/polytools
-	url = https://github.com/IntelLabs/HERACLES-SEAL-polytools
+	path = depends/SEAL-Polytools
+	url = https://github.com/cknabs/SEAL-Polytools.git
 [submodule "depends/googletest"]
 	path = depends/gtest
-	url = git://github.com/google/googletest.git
+	url = https://github.com/google/googletest.git

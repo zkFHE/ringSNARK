@@ -1,2 +1,2 @@
-add_subdirectory(polytools)
+add_subdirectory(SEAL-Polytools)
 add_subdirectory(gtest EXCLUDE_FROM_ALL)

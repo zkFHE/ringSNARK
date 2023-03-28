@@ -240,7 +240,7 @@ namespace ringsnark::seal {
         } else if (is_poly()) {
             size_t hash = 0;
             for (size_t i = 0; i < get_poly().get_coeff_count(); i++) {
-                for (const auto &v: get_poly().get_coeff(i)) {
+                for (const auto &v: get_poly().get_coefficient_rns(i)) {
                     hash ^= v;
                 }
             }
@@ -336,7 +336,7 @@ namespace ringsnark::seal {
             coeffs.insert(coeffs.end(), curr_limb.begin(), curr_limb.end());
         }
         assert(coeffs.size() == parms.poly_modulus_degree() * parms.coeff_modulus().size());
-        return RingElem(polytools::SealPoly(RingElem::get_context(), coeffs, parms.parms_id()));
+        return RingElem(polytools::SealPoly(RingElem::get_context(), coeffs, &parms.parms_id()));
     }
 
     EncodingElem &EncodingElem::operator+=(const EncodingElem &other) {
