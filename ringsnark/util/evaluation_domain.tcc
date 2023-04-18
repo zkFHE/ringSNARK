@@ -50,7 +50,7 @@ namespace ringsnark {
     vector<RingT> evaluation_domain<RingT>::vanishing_polynomial() const {
         polynomial<RingT> Z_poly(vector<RingT>{-values[0], RingT::one()});
         for (size_t i = 1; i < values.size(); i++) {
-            Z_poly *= polynomial<RingT>(vector<RingT>{-values[1], RingT::one()});
+            Z_poly *= polynomial<RingT>(vector<RingT>{-values[i], RingT::one()});
         }
         return Z_poly.data();
     }
