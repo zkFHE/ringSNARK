@@ -30,13 +30,22 @@ find_package(Boost 1.80 COMPONENTS math)
 
 ## lib: polytools
 target_link_libraries(ringsnark INTERFACE polytools)
+
+## lib: Boost
 target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
 target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})
+
+## lib: Google benchmark
+target_link_libraries(ringsnark INTERFACE benchmark::benchmark)
 
 # Executables
 ## Examples
 add_executable(ringsnark_example_SEAL examples/example_SEAL.cpp)
 target_link_libraries(ringsnark_example_SEAL PRIVATE ringsnark)
 
-add_executable(ringsnark_plaintext_check_SEAL examples/plaintext_check_SEAL.cpp)
-target_link_libraries(ringsnark_plaintext_check_SEAL PRIVATE ringsnark)
+add_executable(ringsnark_example_plaintext_check_SEAL examples/example_plaintext_check_SEAL.cpp)
+target_link_libraries(ringsnark_example_plaintext_check_SEAL PRIVATE ringsnark)
+
+## Benchmarks
+add_executable(ringsnark_bench_plaintext_check_SEAL benchmarks/bench_plaintext_check_SEAL.cpp)
+target_link_libraries(ringsnark_bench_plaintext_check_SEAL PRIVATE ringsnark)
