@@ -2,10 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 
 project(ringsnark LANGUAGES CXX)
 
-# Executables
-add_executable(ringsnark-example)
-target_sources(ringsnark-example PRIVATE ${CMAKE_CURRENT_LIST_DIR}/example.cpp)
-target_link_libraries(ringsnark-example PRIVATE ringsnark)
 
 add_executable(bench)
 target_sources(bench PRIVATE ${CMAKE_CURRENT_LIST_DIR}/microbench.cpp)
@@ -36,3 +32,11 @@ find_package(Boost 1.80 COMPONENTS math)
 target_link_libraries(ringsnark INTERFACE polytools)
 target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
 target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})
+
+# Executables
+## Examples
+add_executable(ringsnark_example_SEAL examples/example_SEAL.cpp)
+target_link_libraries(ringsnark_example_SEAL PRIVATE ringsnark)
+
+add_executable(ringsnark_plaintext_check_SEAL examples/plaintext_check_SEAL.cpp)
+target_link_libraries(ringsnark_plaintext_check_SEAL PRIVATE ringsnark)
