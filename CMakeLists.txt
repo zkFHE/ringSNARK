@@ -21,7 +21,7 @@ include_directories(.)
 
 # Libraries
 ## lib: SEAL
-find_package(SEAL 4.0 REQUIRED)
+# find_package(SEAL 4.0 REQUIRED)
 if (TARGET SEAL::seal)
     target_link_libraries(ringsnark INTERFACE SEAL::seal)
 elseif (TARGET SEAL::seal_shared)
