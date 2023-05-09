@@ -49,3 +49,6 @@ target_link_libraries(ringsnark_example_plaintext_check_SEAL PRIVATE ringsnark)
 ## Benchmarks
 add_executable(ringsnark_bench_plaintext_check_SEAL benchmarks/bench_plaintext_check_SEAL.cpp)
 target_link_libraries(ringsnark_bench_plaintext_check_SEAL PRIVATE ringsnark)
+
+add_executable(ringsnark_bench_mul_SEAL benchmarks/bench_mul_SEAL.cpp)
+target_link_libraries(ringsnark_bench_mul_SEAL PRIVATE ringsnark)
