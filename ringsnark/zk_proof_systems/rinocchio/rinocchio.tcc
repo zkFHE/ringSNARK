@@ -3,7 +3,8 @@
 namespace ringsnark::rinocchio {
     template<typename RingT, typename EncT>
     keypair<RingT, EncT> generator(const r1cs_constraint_system<RingT> &cs) {
-        const RingT s = RingT::random_exceptional_element();
+        const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
+        const RingT s = RingT::random_exceptional_element(domain);
         const qrp_instance_evaluation<RingT> qrp_inst = r1cs_to_qrp_instance_map_with_evaluation(cs, s);
 
         const auto [pk_enc, sk_enc] = EncT::keygen();

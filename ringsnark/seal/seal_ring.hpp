@@ -1,14 +1,15 @@
 #ifndef RINGSNARK_SEAL_RING_HPP
 #define RINGSNARK_SEAL_RING_HPP
 
-#include <iostream>
-#include <utility>
-#include <vector>
-#include <variant>
-#include <memory>
+#include "poly_arith.h"
+#include "ringsnark/util/evaluation_domain.hpp"
 #include "seal/seal.h"
 #include "seal/util/rlwe.h"
-#include "poly_arith.h"
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <variant>
+#include <vector>
 
 using std::vector;
 
@@ -71,7 +72,7 @@ namespace ringsnark::seal {
             return RingElem(0);
         }
 
-        static RingElem random_exceptional_element() {
+        static RingElem random_exceptional_element(const shared_ptr<evaluation_domain<RingElem>> domain = nullptr) {
             // TODO: throw error if number of exceptional elements is less than required
             auto parms = get_context().get_context_data(get_context().first_parms_id())->parms();
             uint64_t q1 = parms.coeff_modulus()[0].value();
@@ -80,7 +81,9 @@ namespace ringsnark::seal {
 
             // Rejection sampling with masking
             uint64_t rand = ::seal::random_uint64() & mask;
-            while (rand >= q1) { rand = ::seal::random_uint64() & mask; }
+            while (rand >= q1 && domain && rand <= domain->m) {
+                rand = ::seal::random_uint64() & mask;
+            }
 
             return RingElem(rand);
         }
@@ -118,6 +121,8 @@ namespace ringsnark::seal {
         [[nodiscard]] size_t size_in_bits() const;
 
         [[nodiscard]] bool is_zero() const;
+
+        [[nodiscard]] bool fast_is_zero() const;
 
         [[nodiscard]] bool is_poly() const;
 
@@ -254,9 +259,9 @@ namespace ringsnark::seal {
             enc_contexts.reserve(ring_params.coeff_modulus().size());
 
             // Automagically find suitable poly_modulus_degree and coeff_modulus
-            auto max_plain_modulus = ring_params.coeff_modulus()[ring_params.coeff_modulus().size() - 1].value();
+//            auto max_plain_modulus = ring_params.coeff_modulus()[ring_params.coeff_modulus().size() - 1].value();
             //TODO: binary search to find optimal_poly_modulus_degree; this would require knowing how many additions need to be performed
-            auto poly_modulus_degree = 4 * ring_params.poly_modulus_degree();
+            auto poly_modulus_degree = ring_params.poly_modulus_degree();
             auto coeff_modulus_max_bit_count = ::seal::CoeffModulus::MaxBitCount(poly_modulus_degree);
             vector<int> coeff_modulus_bit_counts;
             // TODO: distribute smoothly instead?

@@ -12,7 +12,7 @@ See qrp.hpp .
 
 namespace ringsnark {
     template<typename T, typename U>
-    T inner_product(typename std::vector<T>::const_iterator a_start,
+    T inner_product_old(typename std::vector<T>::const_iterator a_start,
                     typename std::vector<T>::const_iterator a_end,
                     typename std::vector<U>::const_iterator b_start,
                     typename std::vector<U>::const_iterator b_end) {
@@ -26,6 +26,28 @@ namespace ringsnark {
         b_it++;
         while (a_it != a_end) {
             res += (*a_it) * (*b_it);
+            a_it++;
+            b_it++;
+        }
+        return res;
+    }
+
+    template<typename T, typename U>
+    T inner_product(typename std::vector<T>::const_iterator a_start,
+                    typename std::vector<T>::const_iterator a_end,
+                    typename std::vector<U>::const_iterator b_start,
+                    typename std::vector<U>::const_iterator b_end) {
+        assert(a_end - a_start > 0 && "cannot compute inner product of empty vectors");
+        assert(a_end - a_start == b_end - b_start && "cannot compute inner product of vectors with mismatched sizes");
+        auto a_it = a_start;
+        auto b_it = b_start;
+        T res(*a_start);
+        a_it++;
+        if ((*b_start).fast_is_zero()) { res *= *b_start; }
+        b_it++;
+        while (a_it != a_end) {
+            if ((*b_it).fast_is_zero()) { res += *a_it; }
+            else { res += (*a_it) * (*b_it); }
             a_it++;
             b_it++;
         }

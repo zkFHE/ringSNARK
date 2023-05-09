@@ -32,6 +32,14 @@ namespace ringsnark::seal {
         }
     }
 
+    bool RingElem::fast_is_zero() const {
+        if (is_scalar()) {
+            return get_scalar() == 0;
+        } else {
+            return false;
+        }
+    }
+
     bool RingElem::is_poly() const {
         return std::holds_alternative<Poly>(value);
     }
@@ -104,11 +112,13 @@ namespace ringsnark::seal {
             if (other.is_poly()) {
                 get_poly().add_inplace(other.get_poly());
             } else if (other.is_scalar()) {
+                if (other.get_scalar() == 0) { return *this;}
                 get_poly().add_scalar_inplace(other.get_scalar());
             } else {
                 throw invalid_ring_elem_types();
             }
         } else if (is_scalar()) {
+            if (get_scalar() == 0) { this->value = other.value; return *this;}
             if (other.is_poly()) {
                 Scalar scalar = this->get_scalar();
                 value = polytools::SealPoly(other.get_poly());
@@ -144,6 +154,7 @@ namespace ringsnark::seal {
             if (other.is_poly()) {
                 get_poly().subtract_inplace(other.get_poly());
             } else if (other.is_scalar()) {
+                if (other.get_scalar() == 0) { return *this;}
                 get_poly().subtract_scalar_inplace(other.get_scalar());
             } else {
                 throw invalid_ring_elem_types();
@@ -173,11 +184,15 @@ namespace ringsnark::seal {
             if (other.is_poly()) {
                 get_poly().multiply_inplace(other.get_poly());
             } else if (other.is_scalar()) {
+                if (other.get_scalar() == 1) { return *this; }
+                if (other.get_scalar() == 0) { value = (uint64_t) 0; return *this;}
                 get_poly().multiply_scalar_inplace(other.get_scalar());
             } else {
                 throw invalid_ring_elem_types();
             }
         } else if (is_scalar()) {
+            if (get_scalar() == 1) { this->value = other.value; return *this; }
+            if (other == 0) { return *this;}
             if (other.is_poly()) {
                 Scalar scalar = this->get_scalar();
                 value = polytools::SealPoly(other.get_poly());
