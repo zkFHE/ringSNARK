@@ -192,7 +192,8 @@ namespace ringsnark::seal {
             }
         } else if (is_scalar()) {
             if (get_scalar() == 1) { this->value = other.value; return *this; }
-            if (other == 0) { return *this;}
+            if (get_scalar() == 0) { return *this; }
+            if (other.fast_is_zero()) { value = (uint64_t) 0; return *this; }
             if (other.is_poly()) {
                 Scalar scalar = this->get_scalar();
                 value = polytools::SealPoly(other.get_poly());
@@ -335,15 +336,15 @@ namespace ringsnark::seal {
                 }
                 decryptor.decrypt(e.ciphertexts[i], ptxt);
                 encoders[i]->decode(ptxt, curr_limb);
-            } catch (std::invalid_argument &e) {
-                if (std::string(e.what()) == "encrypted is empty") {
+            } catch (std::invalid_argument &invalid_arg) {
+                if (std::string(invalid_arg.what()) == "encrypted is empty") {
                     // TODO: can we handle this case more explicitly to prevent confusion, e.g., have a dedicated
                     //  flag/subclass for the "0" ciphertext?
                     // This should only really be an issue when the SNARK is used in non-ZK mode;
                     // with ZK, the noise terms prevent the ctxt from being zero w.h.p.
                     // Do nothing, curr_limb already holds all zeros.
                 } else {
-                    throw e;
+                    throw invalid_arg;
                 }
             }
 
@@ -391,6 +392,7 @@ namespace ringsnark::seal {
         }
 
         if (r.is_scalar()) {
+            if (r.get_scalar() == 1) { return *this; }
             return this->operator*=(r.to_poly());
         } else if (r.is_poly()) {
             assert(r.get_poly().get_coeff_modulus_count() == this->ciphertexts.size());

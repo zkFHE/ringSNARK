@@ -81,7 +81,7 @@ namespace ringsnark::seal {
 
             // Rejection sampling with masking
             uint64_t rand = ::seal::random_uint64() & mask;
-            while (rand >= q1 && domain && rand <= domain->m) {
+            while (rand >= q1 || (domain && rand <= domain->m)) {
                 rand = ::seal::random_uint64() & mask;
             }
 
