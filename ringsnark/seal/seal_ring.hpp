@@ -398,4 +398,6 @@ namespace std {
     };
 }
 
+#include "seal_ring.tcc"
+
 #endif
