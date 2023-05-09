@@ -10,3 +10,6 @@
 [submodule "depends/benchmark"]
 	path = depends/benchmark
 	url = https://github.com/google/benchmark
+[submodule "depends/openfhe-development"]
+	path = depends/openfhe-development
+	url = https://github.com/openfheorg/openfhe-development.git
