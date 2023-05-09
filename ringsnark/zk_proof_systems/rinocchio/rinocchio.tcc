@@ -130,11 +130,14 @@ namespace ringsnark::rinocchio {
         EncT alpha_d_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
                                                       h.begin(), h.end());
 
-        EncT f_enc = inner_product<EncT, RingT>(pk.beta_prods.begin(), pk.beta_prods.end(),
-                                                auxiliary_input.begin(), auxiliary_input.end());
-        f_enc += d1 * pk.beta_rv_ts;
+        EncT f_enc = d1 * pk.beta_rv_ts;
         f_enc += d2 * pk.beta_rw_ts;
         f_enc += d3 * pk.beta_ry_ts;
+        if (!auxiliary_input.empty()) {
+             f_enc += inner_product<EncT, RingT>(
+                pk.beta_prods.begin(), pk.beta_prods.end(),
+                auxiliary_input.begin(), auxiliary_input.end());
+        }
 
         return ringsnark::rinocchio::proof<RingT, EncT>(a_enc, alpha_a_enc,
                                                         b_enc, alpha_b_enc,

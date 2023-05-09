@@ -102,8 +102,11 @@ namespace ringsnark::groth16 {
         auto h = qrp_wit.coefficients_for_H;
         EncT c_enc = inner_product<EncT, RingT>(pk.delta_ts.begin(), pk.delta_ts.end(),
                                                 h.begin(), h.end());
-        c_enc += inner_product<EncT, RingT>(pk.delta_mid.begin(), pk.delta_mid.end(),
-                                            auxiliary_input.begin(), auxiliary_input.end());
+        if (!auxiliary_input.empty()) {
+            c_enc += inner_product<EncT, RingT>(
+                pk.delta_mid.begin(), pk.delta_mid.end(),
+                auxiliary_input.begin(), auxiliary_input.end());
+        }
 
         return ringsnark::groth16::proof<RingT, EncT>(a_enc, b_enc, c_enc);
     }

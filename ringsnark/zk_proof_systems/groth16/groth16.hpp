@@ -44,7 +44,7 @@ namespace ringsnark::groth16 {
         [[nodiscard]] size_t size_in_bits() const override {
             return s_pows.size() * s_pows[0].size_in_bits() +
                    gamma_io.size() * gamma_io[0].size_in_bits() +
-                   delta_mid.size() * delta_mid[0].size_in_bits() +
+                   (delta_mid.size() == 0) ? 0: delta_mid.size() * delta_mid[0].size_in_bits() +
                    delta_ts.size() * delta_ts[0].size_in_bits();
         }
     };

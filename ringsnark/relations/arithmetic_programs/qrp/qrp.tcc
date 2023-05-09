@@ -42,12 +42,11 @@ namespace ringsnark {
         auto a_it = a_start;
         auto b_it = b_start;
         T res(*a_start);
+        res *= (*b_start);
         a_it++;
-        if ((*b_start).fast_is_zero()) { res *= *b_start; }
         b_it++;
         while (a_it != a_end) {
-            if ((*b_it).fast_is_zero()) { res += *a_it; }
-            else { res += (*a_it) * (*b_it); }
+            if (!(*b_it).fast_is_zero()) { res += (*a_it) * (*b_it); }
             a_it++;
             b_it++;
         }
