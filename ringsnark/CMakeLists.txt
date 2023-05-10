@@ -15,6 +15,7 @@ install(
 target_sources(ringsnark INTERFACE
         seal/seal_ring.hpp
         seal/seal_ring.tcc
+        seal/seal_util.hpp
         util/polynomials.hpp
         util/polynomials.tcc
         relations/variable.hpp

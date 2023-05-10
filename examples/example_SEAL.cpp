@@ -5,6 +5,7 @@
 #include <ringsnark/zk_proof_systems/groth16/groth16.hpp>
 
 #include "poly_arith.h"
+#include <ringsnark/seal/seal_util.hpp>
 #include <ringsnark/seal/seal_ring.hpp>
 #include <ringsnark/gadgetlib/protoboard.hpp>
 
@@ -13,11 +14,13 @@ using namespace seal;
 
 int main() {
     EncryptionParameters params(scheme_type::bgv);
-    auto poly_modulus_degree = (size_t) pow(2, 11);
+    auto poly_modulus_degree = (size_t) pow(2, 12);
     params.set_poly_modulus_degree(poly_modulus_degree);
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
     params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
     SEALContext context(params);
+
+    print_params(params);
 
     typedef ringsnark::seal::RingElem R;
     typedef ringsnark::seal::EncodingElem E;
