@@ -222,7 +222,7 @@ namespace ringsnark::seal {
 
         std::vector<::seal::Ciphertext> ciphertexts;
 
-        EncodingElem() = delete;
+//        EncodingElem() = delete;
 
     public:
         using PublicKey = nullptr_t; // No keying material needed to evaluate affine combinations of ciphertexts
@@ -231,6 +231,8 @@ namespace ringsnark::seal {
         /*
          * Constructor
          */
+        EncodingElem() = default;
+
         EncodingElem(const EncodingElem &other) : ciphertexts(other.ciphertexts) {
             assert(!other.ciphertexts.empty());
         }

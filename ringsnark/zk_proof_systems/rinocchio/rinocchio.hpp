@@ -43,7 +43,7 @@ namespace ringsnark::rinocchio {
         [[nodiscard]] size_t size_in_bits() const override {
             return s_pows.size() * s_pows[0].size_in_bits()
                    + alpha_s_pows.size() * alpha_s_pows[0].size_in_bits()
-                   + (beta_prods.size() == 0) ? 0 : beta_prods.size() * beta_prods[0].size_in_bits()
+                   + ((beta_prods.size() == 0) ? 0 : beta_prods.size() * beta_prods[0].size_in_bits())
                    + beta_rv_ts.size_in_bits() + beta_rw_ts.size_in_bits() + beta_ry_ts.size_in_bits()
                    + EncT::size_in_bits_pk(pk_enc);
         }

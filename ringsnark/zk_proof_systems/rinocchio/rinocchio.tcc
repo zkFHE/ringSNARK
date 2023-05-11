@@ -89,55 +89,94 @@ namespace ringsnark::rinocchio {
                                                                    primary_input, auxiliary_input,
                                                                    d1, d2, d3);
 
-        // TODO: this is highly non-optimized, skip all the zero-multiplication
+
         // s_pows, alpha_s_pows have length d+1, where d = cs.num_constraints() is the size of the QRP
         const auto a_mid = qrp_wit.coefficients_for_A_mid;
-        EncT a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
-                                                a_mid.begin(), a_mid.end());
-        EncT alpha_a_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
-                                                      a_mid.begin(), a_mid.end());
-
         const auto b_mid = qrp_wit.coefficients_for_B_mid;
-        EncT b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
-                                                b_mid.begin(), b_mid.end());
-        EncT alpha_b_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
-                                                      b_mid.begin(), b_mid.end());
-
         const auto c_mid = qrp_wit.coefficients_for_C_mid;
-        EncT c_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
-                                                c_mid.begin(), c_mid.end());
-        EncT alpha_c_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
-                                                      c_mid.begin(), c_mid.end());
-
         const auto z = qrp_wit.coefficients_for_Z;
-        EncT z_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
-                                                z.begin(), z.end());
-        EncT alpha_z_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
-                                                      z.begin(), z.end());
+        const auto h = qrp_wit.coefficients_for_H;
+
+
+        EncT a_enc, alpha_a_enc, b_enc, alpha_b_enc, c_enc, alpha_c_enc, d_enc, alpha_d_enc, z_enc, alpha_z_enc;
+
+#pragma omp parallel sections default(none) shared(pk, a_mid, b_mid, c_mid, z, h, a_enc, alpha_a_enc, b_enc, alpha_b_enc, c_enc, alpha_c_enc, d_enc, alpha_d_enc, z_enc, alpha_z_enc)
+        {
+#pragma omp section
+            {
+                a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                   a_mid.begin(), a_mid.end());
+            }
+#pragma omp section
+            {
+                alpha_a_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                         a_mid.begin(), a_mid.end());
+            }
+#pragma omp section
+            {
+                b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                   b_mid.begin(), b_mid.end());
+            }
+#pragma omp section
+            {
+                alpha_b_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                         b_mid.begin(), b_mid.end());
+            }
+#pragma omp section
+            {
+                c_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                                                   c_mid.begin(), c_mid.end());
+            }
+#pragma omp section
+            {
+                alpha_c_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                                                         c_mid.begin(), c_mid.end());
+            }
+#pragma omp section
+            {
+                d_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
+                                                   h.begin(), h.end());
+            }
+#pragma omp section
+            {
+                alpha_d_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
+                                                         h.begin(), h.end());
+            }
+#pragma omp section
+            {
+                z_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
+                                                   z.begin(), z.end());
+            }
+#pragma omp section
+            {
+                alpha_z_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
+                                                         z.begin(), z.end());
+            }
+        }
 
         // Add shift terms
         // TODO: add terms to coefficients_for_{A, B, C} directly, similarly to H
-        a_enc += d1 * z_enc;
-        alpha_a_enc += d1 * alpha_z_enc;
-        b_enc += d2 * z_enc;
-        alpha_b_enc += d2 * alpha_z_enc;
-        c_enc += d3 * z_enc;
-        alpha_c_enc += d3 * alpha_z_enc;
-
-        const auto h = qrp_wit.coefficients_for_H;
-        EncT d_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
-                                                h.begin(), h.end());
-        EncT alpha_d_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
-                                                      h.begin(), h.end());
-
-        EncT f_enc = d1 * pk.beta_rv_ts;
-        f_enc += d2 * pk.beta_rw_ts;
-        f_enc += d3 * pk.beta_ry_ts;
-        if (!auxiliary_input.empty()) {
-             f_enc += inner_product<EncT, RingT>(
-                pk.beta_prods.begin(), pk.beta_prods.end(),
-                auxiliary_input.begin(), auxiliary_input.end());
+        if (use_zk) {
+            a_enc += d1 * z_enc;
+            alpha_a_enc += d1 * alpha_z_enc;
+            b_enc += d2 * z_enc;
+            alpha_b_enc += d2 * alpha_z_enc;
+            c_enc += d3 * z_enc;
+            alpha_c_enc += d3 * alpha_z_enc;
         }
+
+        EncT f_enc;
+        if (!auxiliary_input.empty()) {
+            f_enc = inner_product<EncT, RingT>(
+                    pk.beta_prods.begin(), pk.beta_prods.end(),
+                    auxiliary_input.begin(), auxiliary_input.end());
+            if (use_zk) {
+                f_enc += d1 * pk.beta_rv_ts;
+                f_enc += d2 * pk.beta_rw_ts;
+                f_enc += d3 * pk.beta_ry_ts;
+            }
+        }
+
 
         return ringsnark::rinocchio::proof<RingT, EncT>(a_enc, alpha_a_enc,
                                                         b_enc, alpha_b_enc,
@@ -150,16 +189,14 @@ namespace ringsnark::rinocchio {
     bool verifier(const verification_key<RingT, EncT> &vk,
                   const r1cs_primary_input<RingT> &primary_input,
                   const proof<RingT, EncT> &proof) {
-        const RingT V_mid = EncT::decode(vk.sk_enc, proof.A),
-                V_mid_prime = EncT::decode(vk.sk_enc, proof.A_prime),
-                W_mid = EncT::decode(vk.sk_enc, proof.B),
-                W_mid_prime = EncT::decode(vk.sk_enc, proof.B_prime),
-                Y_mid = EncT::decode(vk.sk_enc, proof.C),
-                Y_mid_prime = EncT::decode(vk.sk_enc, proof.C_prime),
-                H = EncT::decode(vk.sk_enc, proof.D),
-                H_prime = EncT::decode(vk.sk_enc, proof.D_prime),
-                L_beta = EncT::decode(vk.sk_enc, proof.F);
-        // TODO: define one version that is amenable to parallelization (close to current implementation), and an "online" version that re-uses the same object in a decode-check loop
+        const array<EncT, 9> encs = {proof.A, proof.A_prime, proof.B, proof.B_prime, proof.C, proof.C_prime, proof.D, proof.D_prime, proof.F};
+        array<RingT, 9> decs;
+        const auto sk_enc = vk.sk_enc;
+#pragma omp parallel for default(none) shared(sk_enc, decs, encs)
+        for (size_t i = 0; i < 9; i++) {
+            decs[i] = EncT::decode(sk_enc, encs[i]);
+        }
+        auto [V_mid, V_mid_prime, W_mid, W_mid_prime, Y_mid, Y_mid_prime, H, H_prime, L_beta] = decs;
 
         const auto cs = vk.pk.constraint_system;
 

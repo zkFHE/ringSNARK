@@ -290,9 +290,7 @@ namespace ringsnark::seal {
 
     std::vector<EncodingElem> EncodingElem::encode(const SecretKey &sk, const std::vector<RingElem> &rs) {
         assert(get_contexts().size() == sk.size());
-        std::vector<EncodingElem> encs;
-        ::seal::Plaintext ptxt;
-        std::vector<::seal::Ciphertext> ciphertexts(get_contexts().size());
+        std::vector<EncodingElem> encs(rs.size());
 
         // Reuse encryptors for all elements
         vector<::seal::Encryptor *> encryptors;
@@ -301,18 +299,23 @@ namespace ringsnark::seal {
             encryptors.push_back(new ::seal::Encryptor(get_contexts()[i], sk[i]));
         }
 
-        for (const auto &r: rs) {
+#pragma omp parallel for default(none) shared(rs, encs, encryptors)
+        for (int i = 0; i < rs.size(); i++) {
+            const auto& r = rs[i];
+            ::seal::Plaintext ptxt;
+            std::vector<::seal::Ciphertext> ctxts(get_contexts().size());
+
             ::polytools::SealPoly poly = (r.is_scalar()) ? r.to_poly().get_poly() : r.get_poly();
 
             // TODO: handle case where number of moduli differs, e.g., after mod-switching on the ring
-            assert(poly.get_coeff_modulus_count() == ciphertexts.size());
+            assert(poly.get_coeff_modulus_count() == ctxts.size());
             for (size_t i = 0; i < get_contexts().size(); i++) {
                 // TODO: encode() silently writes only up to the vector size. Could this cause problems down the line?
                 encoders[i]->encode(poly.get_limb(i), ptxt);
-                encryptors[i]->encrypt_symmetric(ptxt, ciphertexts[i]);
+                encryptors[i]->encrypt_symmetric(ptxt, ctxts[i]);
             }
 
-            encs.emplace_back(ciphertexts);
+            encs[i] = EncodingElem(ctxts);
         }
         return encs;
     }

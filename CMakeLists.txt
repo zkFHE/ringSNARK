@@ -26,17 +26,37 @@ else ()
     message(FATAL_ERROR "Cannot find target SEAL::seal or SEAL::seal_shared")
 endif ()
 
-find_package(Boost 1.80 COMPONENTS math)
-
 ## lib: polytools
 target_link_libraries(ringsnark INTERFACE polytools)
 
 ## lib: Boost
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.80 COMPONENTS math)
+
 target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
 target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})
 
 ## lib: Google benchmark
 target_link_libraries(ringsnark INTERFACE benchmark::benchmark)
+
+## lib: OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP enabled")
+    target_link_libraries(ringsnark INTERFACE OpenMP::OpenMP_CXX)
+endif()
+
+# Features
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result)
+if(result)
+    message(STATUS "IPO / LTO enabled")
+    set_target_properties(foo PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "IPO / LTO enabled")
+endif()
 
 # Executables
 ## Examples
