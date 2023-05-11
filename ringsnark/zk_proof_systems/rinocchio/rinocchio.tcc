@@ -190,10 +190,17 @@ namespace ringsnark::rinocchio {
                   const r1cs_primary_input<RingT> &primary_input,
                   const proof<RingT, EncT> &proof) {
         const array<EncT, 9> encs = {proof.A, proof.A_prime, proof.B, proof.B_prime, proof.C, proof.C_prime, proof.D, proof.D_prime, proof.F};
+        bool auxiliary_inputs_present = true;
+        if (proof.F == EncT())   {
+            cout << "[Verifier] last proof element is empty, i.e., no auxiliary inputs are present" << endl;
+            auxiliary_inputs_present = false;
+        }
+        size_t num_proof_elems = auxiliary_inputs_present ? 9 : 8;
         array<RingT, 9> decs;
         const auto sk_enc = vk.sk_enc;
-#pragma omp parallel for default(none) shared(sk_enc, decs, encs)
-        for (size_t i = 0; i < 9; i++) {
+
+#pragma omp parallel for default(none) shared(sk_enc, decs, encs, num_proof_elems)
+        for (size_t i = 0; i < num_proof_elems; i++) {
             decs[i] = EncT::decode(sk_enc, encs[i]);
         }
         auto [V_mid, V_mid_prime, W_mid, W_mid_prime, Y_mid, Y_mid_prime, H, H_prime, L_beta] = decs;
@@ -257,11 +264,13 @@ namespace ringsnark::rinocchio {
         if (H_prime != tmp) {
             res = false;
         }
-        // CHECK: L_beta = L
-        if (L != L_beta) {
-            res = false;
+        if (auxiliary_inputs_present) {
+            // CHECK: L_beta = L
+            if (L != L_beta) {
+                res = false;
+            }
         }
-
+        // CHECK: P = H * Z(t)
         tmp = H * qrp_inst_eval.Zt;
         if (P != tmp) {
             res = false;

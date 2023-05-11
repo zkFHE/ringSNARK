@@ -1,4 +1,3 @@
-#include "seal_ring.hpp"
 #include <string>
 
 namespace ringsnark::seal {
@@ -299,7 +298,7 @@ namespace ringsnark::seal {
             encryptors.push_back(new ::seal::Encryptor(get_contexts()[i], sk[i]));
         }
 
-#pragma omp parallel for default(none) shared(rs, encs, encryptors)
+#pragma omp parallel for default(none) shared(rs, encs, encryptors, ::seal::parms_id_zero)
         for (int i = 0; i < rs.size(); i++) {
             const auto& r = rs[i];
             ::seal::Plaintext ptxt;
