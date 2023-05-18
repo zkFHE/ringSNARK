@@ -359,6 +359,8 @@ namespace ringsnark::seal {
 
     EncodingElem &EncodingElem::operator+=(const EncodingElem &other) {
         // TODO: handle case where number of ciphertexts differ (and are > 1), e.g., in mod-switching cases?
+        if (other.is_empty()) { return *this; }
+        if (this->is_empty()) { this->ciphertexts = other.ciphertexts; return *this; }
         assert(this->ciphertexts.size() == other.ciphertexts.size());
         assert(this->ciphertexts.size() == get_contexts().size());
         for (size_t i = 0; i < this->ciphertexts.size(); i++) {
@@ -401,7 +403,15 @@ namespace ringsnark::seal {
 
             for (size_t i = 0; i < this->ciphertexts.size(); i++) {
                 encoders[i]->encode(r.get_poly().get_limb(i), ptxt);
-                evaluators[i]->multiply_plain_inplace(this->ciphertexts[i], ptxt);
+                try {
+                    evaluators[i]->multiply_plain_inplace(this->ciphertexts[i],
+                                                          ptxt);
+                } catch(std::logic_error err) {
+                    if (std::string(err.what()) == "result ciphertext is transparent") {
+                    } else {
+                      throw err;
+                    }
+                }
             }
             return *this;
         } else {

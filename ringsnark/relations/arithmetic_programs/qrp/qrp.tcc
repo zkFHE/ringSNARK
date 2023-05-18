@@ -41,12 +41,9 @@ namespace ringsnark {
         assert(a_end - a_start == b_end - b_start && "cannot compute inner product of vectors with mismatched sizes");
         auto a_it = a_start;
         auto b_it = b_start;
-        T res(*a_start);
-        res *= (*b_start);
-        a_it++;
-        b_it++;
+        T res;
         while (a_it != a_end) {
-            if (!(*b_it).fast_is_zero()) { res += (*a_it) * (*b_it); }
+            if (!(*b_it).is_zero()) { res += (*a_it) * (*b_it); }
             a_it++;
             b_it++;
         }

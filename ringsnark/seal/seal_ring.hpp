@@ -237,6 +237,10 @@ namespace ringsnark::seal {
             assert(!other.ciphertexts.empty());
         }
 
+        [[nodiscard]] bool is_empty() const {
+            return this->ciphertexts.empty();
+        }
+
         /*
          * Static
          */
