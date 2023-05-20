@@ -1,0 +1,11 @@
+fail_fast: false
+repos:
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.3.5
+    hooks:
+      - id: clang-format
+      - id: clang-tidy
+      - id: oclint
+      - id: uncrustify
+      - id: cppcheck
+      - id: cpplint
