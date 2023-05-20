@@ -14,10 +14,17 @@ using namespace seal;
 
 int main() {
     EncryptionParameters params(scheme_type::bgv);
-    auto poly_modulus_degree = (size_t) pow(2, 12);
+    auto poly_modulus_degree = 4096;
+    auto inner_poly_modulus_degree = 2*poly_modulus_degree; // TODO: automatically find distinct primes
     params.set_poly_modulus_degree(poly_modulus_degree);
-    params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-    params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
+    auto default_modulus = CoeffModulus::BFVDefault(poly_modulus_degree);
+    vector<int> bit_sizes(default_modulus.size());
+    for (size_t i = 0; i < default_modulus.size(); i++) {
+      bit_sizes[i] = default_modulus[i].bit_count();
+    }
+    vector<Modulus> coeff_modulus = CoeffModulus::Create(inner_poly_modulus_degree, bit_sizes); // Will be batching-friendly for inner scheme
+    params.set_coeff_modulus(coeff_modulus);
+    params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 30));
     SEALContext context(params);
 
     print_params(params);
@@ -25,8 +32,9 @@ int main() {
     typedef ringsnark::seal::RingElem R;
     typedef ringsnark::seal::EncodingElem E;
 
+#define USE_MODSWITCH_IN_INNER_PRODUCT
     R::set_context(context);
-    E::set_context();
+    E::set_context(inner_poly_modulus_degree);
 
     const size_t N = context.get_context_data(context.first_parms_id())->parms().poly_modulus_degree();
     const size_t n = 6;
