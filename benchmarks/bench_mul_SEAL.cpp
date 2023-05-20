@@ -1,10 +1,11 @@
-#include "seal/seal.h"
+#include <benchmark/benchmark.h>
+
+#include <ringsnark/gadgetlib/protoboard.hpp>
+#include <ringsnark/seal/seal_ring.hpp>
 #include <ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp>
 
 #include "poly_arith.h"
-#include <benchmark/benchmark.h>
-#include <ringsnark/gadgetlib/protoboard.hpp>
-#include <ringsnark/seal/seal_ring.hpp>
+#include "seal/seal.h"
 
 typedef ringsnark::seal::RingElem R;
 typedef ringsnark::seal::EncodingElem E;
@@ -68,8 +69,6 @@ ringsnark::protoboard<R> init(size_t N) {
     encoder.encode(vs, ptxt);
     encryptor.encrypt_symmetric(ptxt, ctxt1);
     assert(ctxt1.is_ntt_form());
-
-
 
     evaluator.multiply(ctxt0, ctxt1, ctxt2);
 

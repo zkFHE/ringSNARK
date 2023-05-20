@@ -1,5 +1,5 @@
-#include <string>
 #include <set>
+#include <string>
 
 namespace ringsnark::seal_int {
 [[nodiscard]] size_t RingElem::size_in_bits() const {
@@ -65,7 +65,9 @@ RingElem &RingElem::operator*=(const RingElem &other) {
   return *this;
 }
 
-bool operator==(const RingElem &lhs, const RingElem &rhs) { return lhs.value == rhs.value; }
+bool operator==(const RingElem &lhs, const RingElem &rhs) {
+  return lhs.value == rhs.value;
+}
 
 size_t RingElem::hash() const { throw invalid_ring_elem_types(); }
 
@@ -85,14 +87,14 @@ size_t EncodingElem::size_in_bits() const {
   return size;
 }
 
-    EncodingElem& EncodingElem::modswitch_inplace() {
-        for (size_t i = 0; i < ciphertexts.size(); i++) {
-            evaluators[i]->mod_switch_to_next_inplace(ciphertexts[i]);
-        }
-    }
+EncodingElem &EncodingElem::modswitch_inplace() {
+  for (size_t i = 0; i < ciphertexts.size(); i++) {
+    evaluators[i]->mod_switch_to_next_inplace(ciphertexts[i]);
+  }
+}
 
-std::vector<EncodingElem>
-EncodingElem::encode(const SecretKey &sk, const std::vector<RingElem> &rs) {
+std::vector<EncodingElem> EncodingElem::encode(
+    const SecretKey &sk, const std::vector<RingElem> &rs) {
   assert(get_contexts().size() == sk.size());
   std::vector<EncodingElem> encs(rs.size());
 
@@ -106,7 +108,7 @@ EncodingElem::encode(const SecretKey &sk, const std::vector<RingElem> &rs) {
   vector<uint64_t> vs(
       get_contexts()[0].first_context_data()->parms().poly_modulus_degree());
 
-#pragma omp parallel for default(none)                                         \
+#pragma omp parallel for default(none) \
     shared(vs, rs, encs, encryptors, ::seal::parms_id_zero)
   for (int i = 0; i < rs.size(); i++) {
     const auto &r = rs[i];
@@ -128,35 +130,45 @@ EncodingElem EncodingElem::inner_product(
     vector<EncodingElem>::const_iterator a_start,
     vector<EncodingElem>::const_iterator a_end,
     vector<RingElem>::const_iterator b_start,
-    vector<RingElem>::const_iterator b_end
-) {
-  size_t num_moduli = EncodingElem::get_contexts()[0].first_context_data()->parms().coeff_modulus().size();
+    vector<RingElem>::const_iterator b_end) {
+  size_t num_moduli = EncodingElem::get_contexts()[0]
+                          .first_context_data()
+                          ->parms()
+                          .coeff_modulus()
+                          .size();
 #ifdef RINGSNARK_DEBUG
-  assert(a_end - a_start > 0 && "cannot compute inner product of empty vectors");
-  assert(a_end - a_start == b_end - b_start && "cannot compute inner product of vectors with mismatched sizes");
+  assert(a_end - a_start > 0 &&
+         "cannot compute inner product of empty vectors");
+  assert(a_end - a_start == b_end - b_start &&
+         "cannot compute inner product of vectors with mismatched sizes");
   for (size_t i = 1; i < EncodingElem::get_contexts().size(); i++) {
-    assert(EncodingElem::get_contexts()[i].first_context_data()->parms().coeff_modulus().size() == num_moduli);
+    assert(EncodingElem::get_contexts()[i]
+               .first_context_data()
+               ->parms()
+               .coeff_modulus()
+               .size() == num_moduli);
   }
 #endif
 
-  const size_t num_modswitches = (num_moduli > 2) ? num_moduli - 2 : 0; // Number of modswitches during the sum
+  const size_t num_modswitches =
+      (num_moduli > 2) ? num_moduli - 2
+                       : 0;  // Number of modswitches during the sum
   set<size_t> checkpoints;
   size_t max_num_its = 0;
   vector<bool> is_zero(a_end - a_start);
   for (int i = 0; i < is_zero.size(); ++i) {
-    is_zero[i] = (b_start+i)->is_zero();
+    is_zero[i] = (b_start + i)->is_zero();
     if (!is_zero[i]) {
       max_num_its++;
     }
   }
 
-  if (num_modswitches == 1){
+  if (num_modswitches == 1) {
     checkpoints.insert(max_num_its / 2);
   } else if (num_modswitches > 1) {
     size_t delta = (a_end - a_start) / num_modswitches;
-    for(int i=0; i < num_modswitches-1; ++i)
-    {
-      checkpoints.insert(delta * (i+1));
+    for (int i = 0; i < num_modswitches - 1; ++i) {
+      checkpoints.insert(delta * (i + 1));
     }
     checkpoints.insert(max_num_its);
   }
@@ -168,9 +180,9 @@ EncodingElem EncodingElem::inner_product(
   EncodingElem res;
   EncodingElem tmp;
   size_t curr_it_count = 0;
-  for (int i = 0; i < (a_end-a_start); i++) {
+  for (int i = 0; i < (a_end - a_start); i++) {
     if (!is_zero[i]) {
-      tmp = (*(a_start+i)) * (*(b_start+i));
+      tmp = (*(a_start + i)) * (*(b_start + i));
 #ifdef USE_MODSWITCH_IN_INNER_PRODUCT
       if (num_moduli > 1) {
         tmp.modswitch_inplace();
@@ -182,7 +194,7 @@ EncodingElem EncodingElem::inner_product(
       if (checkpoints.count(curr_it_count) == 1) {
         res.modswitch_inplace();
       }
-# endif
+#endif
     }
   }
   return res;
@@ -290,4 +302,4 @@ EncodingElem &EncodingElem::operator*=(const RingElem &r) {
   }
   return *this;
 }
-} // namespace ringsnark::seal_int
+}  // namespace ringsnark::seal_int

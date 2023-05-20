@@ -1,10 +1,11 @@
-#include "seal/seal.h"
+#include <benchmark/benchmark.h>
+
+#include <ringsnark/gadgetlib/protoboard.hpp>
+#include <ringsnark/seal/seal_ring.hpp>
 #include <ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp>
 
 #include "poly_arith.h"
-#include <benchmark/benchmark.h>
-#include <ringsnark/gadgetlib/protoboard.hpp>
-#include <ringsnark/seal/seal_ring.hpp>
+#include "seal/seal.h"
 
 typedef ringsnark::seal::RingElem R;
 typedef ringsnark::seal::EncodingElem E;
@@ -25,8 +26,8 @@ ringsnark::protoboard<R> init(size_t N) {
   } catch (std::invalid_argument &e) {
   }
 
-  const size_t num_input_variables = N+1;
-  const size_t num_variables = N+1;
+  const size_t num_input_variables = N + 1;
+  const size_t num_variables = N + 1;
   ringsnark::protoboard<R> pb;
 
   // Set public values
@@ -36,11 +37,13 @@ ringsnark::protoboard<R> init(size_t N) {
   pb.set_input_sizes(num_input_variables);
 
   // Set constraints
-  auto tables = context.get_context_data(context.first_parms_id())->small_ntt_tables();
+  auto tables =
+      context.get_context_data(context.first_parms_id())->small_ntt_tables();
   vector<uint64_t> root_pows(N);
   root_pows[0] = 1;
   for (int i = 1; i < N; i++) {
-    root_pows[i] = (root_pows[i-1] * tables->get_root()) % params.coeff_modulus()[0].value();
+    root_pows[i] = (root_pows[i - 1] * tables->get_root()) %
+                   params.coeff_modulus()[0].value();
   }
   R rs(polytools::SealPoly(context, root_pows, &(context.first_parms_id())));
   R row(rs);

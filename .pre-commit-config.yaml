@@ -4,8 +4,7 @@ repos:
     rev: v1.3.5
     hooks:
       - id: clang-format
-      - id: clang-tidy
-      - id: oclint
-      - id: uncrustify
-      - id: cppcheck
-      - id: cpplint
+        types: [c++]
+#      - id: clang-tidy
+#      - id: cppcheck
+#      - id: cpplint

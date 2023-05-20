@@ -1,21 +1,22 @@
 #ifndef RINGSNARK_SEAL_RING_HPP
 #define RINGSNARK_SEAL_RING_HPP
 
-#include "poly_arith.h"
-#include "ringsnark/util/evaluation_domain.hpp"
-#include "seal/seal.h"
-#include "seal/util/rlwe.h"
 #include <iostream>
 #include <memory>
 #include <utility>
 #include <variant>
 #include <vector>
 
+#include "poly_arith.h"
+#include "ringsnark/util/evaluation_domain.hpp"
+#include "seal/seal.h"
+#include "seal/util/rlwe.h"
+
 using std::vector;
 
 namespace ringsnark::seal {
 class RingElem {
-protected:
+ protected:
   using Scalar = uint64_t;
   using Poly = polytools::SealPoly;
 
@@ -27,7 +28,7 @@ protected:
 
   [[nodiscard]] Scalar &get_scalar();
 
-public:
+ public:
   /*
    * Constructors
    */
@@ -169,7 +170,7 @@ public:
   [[nodiscard]] size_t hash() const;
 
   class invalid_ring_elem_types : std::invalid_argument {
-  public:
+   public:
     explicit invalid_ring_elem_types() : invalid_argument("invalid types") {}
   };
 
@@ -213,7 +214,7 @@ inline bool operator!=(const RingElem &lhs, const RingElem &rhs) {
 std::ostream &operator<<(std::ostream &out, const RingElem &elem);
 
 class EncodingElem {
-protected:
+ protected:
   inline static std::vector<::seal::SEALContext> contexts;
   // Use pointers instead of values as an ugly hack.
   // std::vectors requires a copy-constructor to be available, whereas SEAL
@@ -225,14 +226,15 @@ protected:
 
   //        EncodingElem() = delete;
 
-public:
-  using PublicKey = nullptr_t; // No keying material needed to evaluate affine
-                               // combinations of ciphertexts
+ public:
+  using PublicKey = nullptr_t;  // No keying material needed to evaluate affine
+                                // combinations of ciphertexts
   using SecretKey = vector<::seal::SecretKey>;
   class decoding_error : std::invalid_argument {
-  public:
+   public:
     explicit decoding_error() : invalid_argument("decoding error") {}
-    explicit decoding_error(const string& msg) : invalid_argument("decoding error: " + msg) {}
+    explicit decoding_error(const string &msg)
+        : invalid_argument("decoding error: " + msg) {}
   };
 
   /*
@@ -270,7 +272,7 @@ public:
     vector<::seal::SEALContext> enc_contexts;
     enc_contexts.reserve(ring_params.coeff_modulus().size());
 
-     auto poly_modulus_degree = (N > 0) ? N : ring_params.poly_modulus_degree();
+    auto poly_modulus_degree = (N > 0) ? N : ring_params.poly_modulus_degree();
     auto coeff_modulus = ::seal::CoeffModulus::BFVDefault(poly_modulus_degree);
 
     for (size_t i = 0; i < ring_params.coeff_modulus().size(); i++) {
@@ -325,22 +327,23 @@ public:
     }
   }
 
-        // Encode all elements in rs using the same BatchEncoder and Encryptor objects for efficiency
-        static std::vector<EncodingElem> encode(const SecretKey &sk, const std::vector<RingElem> &rs);
+  // Encode all elements in rs using the same BatchEncoder and Encryptor objects
+  // for efficiency
+  static std::vector<EncodingElem> encode(const SecretKey &sk,
+                                          const std::vector<RingElem> &rs);
 
-        static EncodingElem inner_product(
-            vector<EncodingElem>::const_iterator a_start,
-            vector<EncodingElem>::const_iterator a_end,
-            vector<RingElem>::const_iterator b_start,
-            vector<RingElem>::const_iterator b_end
-            );
+  static EncodingElem inner_product(
+      vector<EncodingElem>::const_iterator a_start,
+      vector<EncodingElem>::const_iterator a_end,
+      vector<RingElem>::const_iterator b_start,
+      vector<RingElem>::const_iterator b_end);
 
-        static RingElem decode(const SecretKey &sk, const EncodingElem &e);
+  static RingElem decode(const SecretKey &sk, const EncodingElem &e);
 
-        /*
-         * Members
-         */
-        [[nodiscard]] size_t size_in_bits() const;
+  /*
+   * Members
+   */
+  [[nodiscard]] size_t size_in_bits() const;
 
   [[nodiscard]] static size_t size_in_bits_pk(const PublicKey &pk) { return 0; }
 
@@ -364,7 +367,7 @@ public:
   explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts)
       : ciphertexts(std::move(ciphertexts)) {}
 
-  EncodingElem& modswitch_inplace();
+  EncodingElem &modswitch_inplace();
 
   friend bool operator==(const EncodingElem &lhs, const EncodingElem &rhs);
 };
@@ -404,15 +407,16 @@ inline bool operator==(const EncodingElem &lhs, const EncodingElem &rhs) {
   }
   return true;
 }
-} // namespace ringsnark::seal
+}  // namespace ringsnark::seal
 
 namespace std {
-template <> struct hash<ringsnark::seal::RingElem> {
+template <>
+struct hash<ringsnark::seal::RingElem> {
   size_t operator()(const ringsnark::seal::RingElem &r) const {
     return r.hash();
   }
 };
-} // namespace std
+}  // namespace std
 
 #include "seal_ring.tcc"
 
