@@ -104,52 +104,52 @@ namespace ringsnark::rinocchio {
         {
 #pragma omp section
             {
-                a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                a_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                                    a_mid.begin(), a_mid.end());
             }
 #pragma omp section
             {
-                alpha_a_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                alpha_a_enc = EncT::inner_product(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
                                                          a_mid.begin(), a_mid.end());
             }
 #pragma omp section
             {
-                b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                b_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                                    b_mid.begin(), b_mid.end());
             }
 #pragma omp section
             {
-                alpha_b_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                alpha_b_enc = EncT::inner_product(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
                                                          b_mid.begin(), b_mid.end());
             }
 #pragma omp section
             {
-                c_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+                c_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                                    c_mid.begin(), c_mid.end());
             }
 #pragma omp section
             {
-                alpha_c_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
+                alpha_c_enc = EncT::inner_product(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end() - 1,
                                                          c_mid.begin(), c_mid.end());
             }
 #pragma omp section
             {
-                d_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
+                d_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end(),
                                                    h.begin(), h.end());
             }
 #pragma omp section
             {
-                alpha_d_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
+                alpha_d_enc = EncT::inner_product(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
                                                          h.begin(), h.end());
             }
 #pragma omp section
             {
-                z_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end(),
+                z_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end(),
                                                    z.begin(), z.end());
             }
 #pragma omp section
             {
-                alpha_z_enc = inner_product<EncT, RingT>(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
+                alpha_z_enc = EncT::inner_product(pk.alpha_s_pows.begin(), pk.alpha_s_pows.end(),
                                                          z.begin(), z.end());
             }
         }
@@ -167,7 +167,7 @@ namespace ringsnark::rinocchio {
 
         EncT f_enc;
         if (!auxiliary_input.empty()) {
-            f_enc = inner_product<EncT, RingT>(
+            f_enc = EncT::inner_product(
                     pk.beta_prods.begin(), pk.beta_prods.end(),
                     auxiliary_input.begin(), auxiliary_input.end());
             if (use_zk) {

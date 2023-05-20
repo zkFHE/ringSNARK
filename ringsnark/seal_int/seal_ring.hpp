@@ -322,6 +322,13 @@ namespace ringsnark::seal_int {
         // Encode all elements in rs using the same BatchEncoder and Encryptor objects for efficiency
         static std::vector<EncodingElem> encode(const SecretKey &sk, const std::vector<RingElem> &rs);
 
+        static EncodingElem inner_product(
+            vector<EncodingElem>::const_iterator a_start,
+            vector<EncodingElem>::const_iterator a_end,
+            vector<RingElem>::const_iterator b_start,
+            vector<RingElem>::const_iterator b_end
+            );
+
         static RingElem decode(const SecretKey &sk, const EncodingElem &e);
 
         /*
@@ -348,7 +355,10 @@ namespace ringsnark::seal_int {
 
         EncodingElem &operator*=(const RingElem &other);
 
-        explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts) : ciphertexts(std::move(ciphertexts)) {}
+  explicit EncodingElem(std::vector<::seal::Ciphertext> ciphertexts)
+      : ciphertexts(std::move(ciphertexts)) {}
+
+  EncodingElem& modswitch_inplace();
 
         friend bool operator==(const EncodingElem &lhs, const EncodingElem &rhs);
     };
@@ -387,7 +397,7 @@ namespace ringsnark::seal_int {
         }
         return true;
     }
-}
+} // namespace ringsnark::seal_int
 
 
 namespace std {
@@ -397,7 +407,7 @@ namespace std {
             return r.hash();
         }
     };
-}
+} // namespace std
 
 #include "seal_ring.tcc"
 

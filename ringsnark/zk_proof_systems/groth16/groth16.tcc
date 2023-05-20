@@ -3,7 +3,8 @@
 namespace ringsnark::groth16 {
     template<typename RingT, typename EncT>
     keypair<RingT, EncT> generator(const r1cs_constraint_system<RingT> &cs) {
-        const RingT s = RingT::random_exceptional_element();
+      const auto domain = get_evaluation_domain<RingT>(cs.num_constraints());
+        const RingT s = RingT::random_exceptional_element(domain);
         const qrp_instance_evaluation<RingT> qrp_inst = r1cs_to_qrp_instance_map_with_evaluation(cs, s);
 
         const auto [pk_enc, sk_enc] = EncT::keygen();
@@ -84,26 +85,26 @@ namespace ringsnark::groth16 {
         // TODO: this is highly non-optimized, skip all the zero-multiplication
         // s_pows have length d+1, where d = cs.num_constraints() is the size of the QRP
         auto a = qrp_wit.coefficients_for_A_io;
-        EncT a_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+        EncT a_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                                 a.begin(), a.end());
         a = qrp_wit.coefficients_for_A_mid;
-        a_enc += inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+        a_enc += EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                             a.begin(), a.end());
         a_enc += pk.alpha;
 
         auto b = qrp_wit.coefficients_for_B_io;
-        EncT b_enc = inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+        EncT b_enc = EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                                 b.begin(), b.end());
         b = qrp_wit.coefficients_for_B_mid;
-        b_enc += inner_product<EncT, RingT>(pk.s_pows.begin(), pk.s_pows.end() - 1,
+        b_enc += EncT::inner_product(pk.s_pows.begin(), pk.s_pows.end() - 1,
                                             b.begin(), b.end());
         b_enc += pk.beta;
 
         auto h = qrp_wit.coefficients_for_H;
-        EncT c_enc = inner_product<EncT, RingT>(pk.delta_ts.begin(), pk.delta_ts.end(),
+        EncT c_enc = EncT::inner_product(pk.delta_ts.begin(), pk.delta_ts.end(),
                                                 h.begin(), h.end());
         if (!auxiliary_input.empty()) {
-            c_enc += inner_product<EncT, RingT>(
+            c_enc += EncT::inner_product(
                 pk.delta_mid.begin(), pk.delta_mid.end(),
                 auxiliary_input.begin(), auxiliary_input.end());
         }
