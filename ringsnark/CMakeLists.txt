@@ -13,6 +13,8 @@ install(
 )
 
 target_sources(ringsnark INTERFACE
+        seal_int/seal_ring.hpp
+        seal_int/seal_ring.tcc
         seal/seal_ring.hpp
         seal/seal_ring.tcc
         seal/seal_util.hpp
