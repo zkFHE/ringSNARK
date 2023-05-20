@@ -9,7 +9,7 @@ using namespace seal;
 
 void print_params(const EncryptionParameters parms) {
   const SEALContext context(parms);
-  cout << "[PARAM] Parameter validation (success): "
+  cout << "[PARAM] Parameter validation (" <<  context.parameter_error_name() << "): "
        << context.parameter_error_message() << endl;
   auto qualifiers = context.first_context_data()->qualifiers();
   cout << "[PARAM] Batching enabled: " << boolalpha << qualifiers.using_batching

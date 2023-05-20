@@ -334,7 +334,7 @@ namespace ringsnark::seal {
                 if (decryptor.invariant_noise_budget(e.ciphertexts[i]) <= 0) {
                     // This indicates that either the parameters of the encoding scheme were set to be too small,
                     // or that the prover used more budget (i.e., performed more operations) than required.
-                    throw std::invalid_argument("not enough noise budget remaining at decryption");
+                    throw decoding_error();
                 }
                 decryptor.decrypt(e.ciphertexts[i], ptxt);
                 encoders[i]->decode(ptxt, curr_limb);
@@ -418,4 +418,4 @@ namespace ringsnark::seal {
             throw RingElem::invalid_ring_elem_types();
         }
     }
-}
+} // namespace ringsnark::seal_int

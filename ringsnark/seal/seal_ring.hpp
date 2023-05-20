@@ -136,7 +136,7 @@ namespace ringsnark::seal {
             return res;
         }
 
-        bool is_invertible() const noexcept;
+        [[nodiscard]] bool is_invertible() const noexcept;
 
         void invert_inplace();
 
@@ -227,6 +227,10 @@ namespace ringsnark::seal {
     public:
         using PublicKey = nullptr_t; // No keying material needed to evaluate affine combinations of ciphertexts
         using SecretKey = vector<::seal::SecretKey>;
+        class decoding_error : std::invalid_argument {
+          public:
+            explicit decoding_error() : invalid_argument("decoding error") {}
+        };
 
         /*
          * Constructor
@@ -256,7 +260,7 @@ namespace ringsnark::seal {
             return {nullptr, sk};
         }
 
-        static void set_context() {
+        static void set_context(size_t N=0) {
             // TODO: find (joint) primes Q_1, ..., Q_L for encoding schemes s.t.
             // Q_1 > q_l, and Q, resp. L are just barely big enough to allow for a linear homomorphism
             const ::seal::SEALContext &ring_context = RingElem::get_context();
@@ -267,7 +271,7 @@ namespace ringsnark::seal {
             // Automagically find suitable poly_modulus_degree and coeff_modulus
 //            auto max_plain_modulus = ring_params.coeff_modulus()[ring_params.coeff_modulus().size() - 1].value();
             //TODO: binary search to find optimal_poly_modulus_degree; this would require knowing how many additions need to be performed
-            auto poly_modulus_degree = ring_params.poly_modulus_degree();
+            auto poly_modulus_degree = (N > 0) ? N : ring_params.poly_modulus_degree();
             auto coeff_modulus_max_bit_count = ::seal::CoeffModulus::MaxBitCount(poly_modulus_degree);
             vector<int> coeff_modulus_bit_counts;
             // TODO: distribute smoothly instead?
