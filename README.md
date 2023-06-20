@@ -15,9 +15,8 @@ For the ring $Z_q^N$, we use _batched_ encodings, which are orders of magnitude 
 
 ### Backend
 ringSNARK can use two backends for fast vector/polynomial ring arithmetic: 
-- [Microsoft SEAL](https://github.com/microsoft/SEAL), via the [polytools](https://github.com/MarbleHE/polytools) arithmetic wrapper
-- [OpenFHE](https://github.com/openfhe/openfhe)
-
+- [Microsoft SEAL](https://github.com/microsoft/SEAL), via the [SEAL-Polytools](https://github.com/MarbleHE/SEAL-Polytools) arithmetic wrapper
+- [OpenFHE](https://github.com/openfheorg/openfhe-development)
 ### Structure 
 ```
 ├ docs --------------- auxiliary material, including specifications, scripts, and presentations
@@ -46,8 +45,8 @@ This library requires the `boost` C++ library.
 
 Optionally, if support for FHE rings is needed, the following dependencies are needed: 
 - For the SEAL backend: [SEAL](https://github.com/microsoft/SEAL) (tested with versions 4.0.0 to 4.1.1) and [SEAL-Polytools](https://MarbleHE/SEAL-Polytools)
-- For the OpenFHE backend: [OpenFHE](https://github.com/openfhe/openfhe)
-- 
+- For the OpenFHE backend: [OpenFHE](https://github.com/openfheorg/openfhe-development)
+  
 Both are fetched automatically as submodules, so you don't need to install them separately. 
 
 ### Building
