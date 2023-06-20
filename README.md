@@ -1,18 +1,36 @@
-# ringSNARK - A C++ Library for zkSNARK arguments over ring
-This repository contains an implementation of the Rinocchio [[1]](#1) protocol (SNARK for Ring Arithmetic) for general rings. 
-This repository also contains instantiates the general protocol for rings $Z_{\prod_i q_i}[X]/\langle X^N+1\rangle$ as used in Fully Homomorphic Encryption (FHE), notably those used by the SEAL [[2]](#2) library. 
+# ringSNARK - A modular library for zkSNARKs over rings
+This repository contains a generic implementation of the Rinocchio and ringGroth16 [[1]](#1) SNARKs for general rings. 
 
+This repository also contains concrete instantiations of encodings for the rings $Z_q$, $Z_q^N$, and $Z_q[X]/\langle X^N+1\rangle$ for a composite $q$. 
+These rings are especially useful to (efficiently) prove statements about lattice relations, in particular for Fully Homomorphic Encryption (FHE). 
 
 ## About
-ringSNARK is being developed in the [Privacy-Preserving Systems Lab](https://pps-lab.com) at [ETH Zurich](https://ethz.ch/en.html) by [Christian Knabenhans](https://cknabs.github.io). 
+### Frontend
+This library provides a [libsnark](https://github.com/scipr-lab/libsnark)-inspired domain-specific language to build gadgets and specify constraints. 
 
-For its concrete instantiation for FHE rings, ringSNARK uses the [Microsoft SEAL](https://github.com/microsoft/SEAL) library and the `polytools` set of utilities. `polytools` was developed by [Alexander Viand](https://pps-lab.com/people/alexanderviand/) at Intel Labs, and is still closed-sourced (stay tuned for its open-sourcing!). 
+### Proof systems
+ringSNARK implements the two proof systems from [[1]](#1): Rinocchio (based on Pinocchio SNARK) and ringGroth16 (based on Groth16). 
 
-### Rinocchio: SNARKs for Ring Arithmetic
-This code implements the "Rinocchio" protocol outlined in [[1]](#1); [Rinocchio.pdf](/blob/master/Rinocchio.pdf) contains an implementation-friendly description of the protocol, a concrete runtime analysis, and our optimizations to the protocol (in particular, faster encodings for FHE rings). 
+For the ring $Z_q^N$, we use _batched_ encodings, which are orders of magnitude much more efficient than the ones proposed in [[1]](#1). 
 
-## Security
+### Backend
+ringSNARK can use two backends for fast vector/polynomial ring arithmetic: 
+- [Microsoft SEAL](https://github.com/microsoft/SEAL), via the [polytools](https://github.com/MarbleHE/polytools) arithmetic wrapper
+- [OpenFHE](https://github.com/openfhe/openfhe)
 
+### Structure 
+```
+├ docs --------------- auxiliary material, including specifications, scripts, and presentations
+├ examples ----------- circuits for various (FHE) use cases
+└ ringsnark
+  ├ gadgetlib -------- libsnark-style gadgets
+  ├ reductions ------- libsnark-style for R1CS->QRP translation
+  ├ relations -------- libsnark-style data structures for R1CS/QRP instances
+  ├ zk_proof_systems - template implementation of Rinocchio and ringGroth16
+  └ seal ------------- rings implemented with the SEAL backend
+```
+
+### Security
 The theoretical security of the underlying SNARKs and their assumptions are analyzed in [[1]](#1).  
 This code is a research-quality proof-of-concept, has not undergone a thorough security review, and is still being actively developed. 
 You are welcome to use it for proof-of-concept and academic projects, but this code is not suitable for critical and production systems. 
@@ -26,9 +44,11 @@ The ringSNARK library relies on the following:
 ### Requirements
 This library requires the `boost` C++ library. 
 
-Optionally, if support for FHE rings is needed, the following are required: 
-- [SEAL](https://github.com/microsoft/SEAL) (tested with versions 4.0.0 to 4.1.1)
-- [SEAL-Polytools](https://MarbleHE/SEAL-Polytools)
+Optionally, if support for FHE rings is needed, the following dependencies are needed: 
+- For the SEAL backend: [SEAL](https://github.com/microsoft/SEAL) (tested with versions 4.0.0 to 4.1.1) and [SEAL-Polytools](https://MarbleHE/SEAL-Polytools)
+- For the OpenFHE backend: [OpenFHE](https://github.com/openfhe/openfhe)
+- 
+Both are fetched automatically as submodules, so you don't need to install them separately. 
 
 ### Building
 ```bash
@@ -38,32 +58,5 @@ mkdir build && cd build && cmake ..
 make
 ```
 
-## Directory structure 
-`include/` contains header and template files for the Rinocchio protocol over general rings, as well as header files for an instantiation of Rinocchio for FHE schemes as implemented in SEAL. 
-
-`src/` contains the implementation of the SEAL-specific prover and verifier. 
-
-`example.cpp` shows how to instantiate the code to prove and verify a small (1 addition, 2 multiplications) circuit over FHE rings. 
-
-## Roadmap
-This code is being actively developed, and here is a tentative implementation plan: 
-
-- [x] Migrate to a libsnark-inspired interface
-  - [x] Implement circuit -> R1CS -> QRP generation pipeline
-  - [x] Change interfaces to expose same API as libsnark
-  - [x] Abstract random sampling inside keypair generation process
-- [x] Implement optimized FHE-ring encoding/decoding
-- [x] Add full zero-knowledge support
-- [x] Analyze and implement RingGroth16 in addition to Rinocchio
-- [ ] Add common gadgets for FHE operations
-- [ ] Add wrapper around FHE evaluator that automatically calls the corresponding gadgets
-- [ ] Add more ring arithmetic backends
-  - [ ] for SEAL without `polytools`
-  - [ ] for OpenFHE
-  - [ ] for Lattigo and tfhe-rs (?)
-
 ## References
-
-<a id="1">[1]</a> C. Ganesh, A. Nitulescu, and E. Soria-Vazquez, Rinocchio: SNARKs for Ring Arithmetic. Cryptology ePrint Archive, Paper 2021/322, 2021. [Online]. Available: https://eprint.iacr.org/2021/322
-
-<a id="2">[2]</a> Microsoft SEAL. https://github.com/Microsoft/SEAL, 2022. [Online]. Available: https://github.com/Microsoft/SEAL 
+<a id="1">[1]</a> C. Ganesh, A. Nitulescu, and E. Soria-Vazquez, Rinocchio: SNARKs for Ring Arithmetic. Cryptology ePrint Archive, Paper 2021/322, 2021. Available: https://eprint.iacr.org/2021/322
