@@ -33,7 +33,7 @@ target_link_libraries(ringsnark INTERFACE polytools)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.80 COMPONENTS math)
+find_package(Boost 1.80)
 
 target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
 target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})
