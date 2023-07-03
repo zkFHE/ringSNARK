@@ -60,18 +60,17 @@ endif()
 
 # Executables
 ## Examples
-add_executable(ringsnark_example_SEAL examples/example_SEAL.cpp)
-target_link_libraries(ringsnark_example_SEAL PRIVATE ringsnark)
-
-add_executable(ringsnark_example_plaintext_check_SEAL examples/example_plaintext_check_SEAL.cpp)
-target_link_libraries(ringsnark_example_plaintext_check_SEAL PRIVATE ringsnark)
+file( GLOB_RECURSE EXAMPLES_SOURCES RELATIVE "${CMAKE_SOURCE_DIR}/examples/" "examples/*.cpp" )
+foreach( source_file ${EXAMPLES_SOURCES} )
+    string( REPLACE ".cpp" "" source_name ${source_file} )
+    add_executable( ${source_name} "examples/${source_file}" )
+    target_link_libraries(${source_name} PRIVATE ringsnark)
+endforeach( source_file ${EXAMPLES_SOURCES} )
 
 ## Benchmarks
-add_executable(ringsnark_bench_plaintext_check_SEAL benchmarks/bench_plaintext_check_SEAL.cpp)
-target_link_libraries(ringsnark_bench_plaintext_check_SEAL PRIVATE ringsnark)
-
-add_executable(ringsnark_bench_mul_SEAL benchmarks/bench_mul_SEAL.cpp)
-target_link_libraries(ringsnark_bench_mul_SEAL PRIVATE ringsnark)
-
-add_executable(ringsnark_bench_ntt_SEAL benchmarks/bench_ntt_SEAL.cpp)
-target_link_libraries(ringsnark_bench_ntt_SEAL PRIVATE ringsnark)
+file( GLOB_RECURSE EXAMPLES_SOURCES RELATIVE "${CMAKE_SOURCE_DIR}/benchmarks/" "benchmarks/*.cpp" )
+foreach( source_file ${EXAMPLES_SOURCES} )
+    string( REPLACE ".cpp" "" source_name ${source_file} )
+    add_executable( ${source_name} "benchmarks/${source_file}" )
+    target_link_libraries(${source_name} PRIVATE ringsnark)
+endforeach( source_file ${EXAMPLES_SOURCES} )
