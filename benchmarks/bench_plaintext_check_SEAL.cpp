@@ -2,6 +2,7 @@
 
 #include <ringsnark/gadgetlib/protoboard.hpp>
 #include <ringsnark/seal/seal_ring.hpp>
+#include <ringsnark/seal/seal_util.hpp>
 #include <ringsnark/zk_proof_systems/rinocchio/rinocchio.hpp>
 
 #include "poly_arith.h"
@@ -13,17 +14,31 @@ using namespace seal;
 typedef ringsnark::seal::RingElem R;
 typedef ringsnark::seal::EncodingElem E;
 
+#define USE_MODSWITCH_IN_INNER_PRODUCT
+
 ringsnark::protoboard<R> init(size_t logT) {
   EncryptionParameters params(scheme_type::bgv);
-  auto poly_modulus_degree = (size_t)pow(2, 13);
+  auto poly_modulus_degree = 2048;
+  auto inner_poly_modulus_degree =
+      8 * poly_modulus_degree;  // TODO: automatically find distinct primes
   params.set_poly_modulus_degree(poly_modulus_degree);
-  params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-  params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, logT));
+  auto default_modulus = CoeffModulus::BFVDefault(poly_modulus_degree);
+  vector<int> bit_sizes(default_modulus.size());
+  for (size_t i = 0; i < default_modulus.size(); i++) {
+    bit_sizes[i] = default_modulus[i].bit_count();
+  }
+  vector<Modulus> coeff_modulus = CoeffModulus::Create(
+      inner_poly_modulus_degree,
+      bit_sizes);  // Will be batching-friendly for inner scheme
+  params.set_coeff_modulus(coeff_modulus);
+  params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 30));
   SEALContext context(params);
+
+  print_params(params);
 
   try {
     R::set_context(context);
-    E::set_context();
+    E::set_context(inner_poly_modulus_degree);
   } catch (std::invalid_argument& e) {
   }
 
