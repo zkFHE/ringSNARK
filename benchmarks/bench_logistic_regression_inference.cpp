@@ -59,7 +59,7 @@ std::pair<vector<Ciphertext>, vector<Ciphertext>> encrypt() {
     encryptor.encrypt_symmetric(ptxt, ctxt2[i]);
     assert(ctxt2[i].is_ntt_form());
   }
-  return std::tie(ctxt1, ctxt2);
+  return std::make_pair(ctxt1, ctxt2);
 }
 
 ringsnark::protoboard<R> init(SEALContext& context) {
