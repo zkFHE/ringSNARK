@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(ringsnark LANGUAGES CXX)
 
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
 add_executable(bench)
 target_sources(bench PRIVATE ${CMAKE_CURRENT_LIST_DIR}/microbench.cpp)
