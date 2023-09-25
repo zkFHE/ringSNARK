@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "poly_arith.h"
-#include "ringsnark/util/evaluation_domain.hpp"
+#include "../util/evaluation_domain.hpp"
 #include "seal/seal.h"
 #include "seal/util/rlwe.h"
 
