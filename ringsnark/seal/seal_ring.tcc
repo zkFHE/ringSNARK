@@ -318,6 +318,7 @@ EncodingElem &EncodingElem::modswitch_inplace() {
   for (size_t i = 0; i < ciphertexts.size(); i++) {
     evaluators[i]->mod_switch_to_next_inplace(ciphertexts[i]);
   }
+  return *this;
 }
 
 std::vector<EncodingElem> EncodingElem::encode(
