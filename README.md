@@ -60,5 +60,8 @@ make
 
 Examples are available in `examples`, and benchmarks in `benchmarks`. 
 
+#### Docker
+To build a Docker container that runs a benchmark, run `docker build . --tag rinocchio-bench`, and run it with `docker run --tag rinocchio-bench`. 
+
 ## References
 <a id="1">[1]</a> C. Ganesh, A. Nitulescu, and E. Soria-Vazquez, Rinocchio: SNARKs for Ring Arithmetic. Cryptology ePrint Archive, Paper 2021/322, 2021. Available: https://eprint.iacr.org/2021/322
