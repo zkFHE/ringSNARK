@@ -10,14 +10,14 @@
 
 namespace ringsnark {
 
-template<typename RingT>
-gadget<RingT>::gadget(protoboard<RingT> &pb, const std::string &annotation_prefix) :
-    pb(pb), annotation_prefix(annotation_prefix)
-{
+template <typename RingT>
+gadget<RingT>::gadget(protoboard<RingT> &pb,
+                      const std::string &annotation_prefix)
+    : pb(pb), annotation_prefix(annotation_prefix) {
 #ifdef DEBUG
-    assert(annotation_prefix != "");
+  assert(annotation_prefix != "");
 #endif
 }
 
-} // ringsnark
-#endif // GADGET_TCC_
+}  // namespace ringsnark
+#endif  // GADGET_TCC_

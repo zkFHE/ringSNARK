@@ -2,10 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(ringsnark LANGUAGES CXX)
 
-# Executables
-add_executable(ringsnark-example)
-target_sources(ringsnark-example PRIVATE ${CMAKE_CURRENT_LIST_DIR}/example.cpp)
-target_link_libraries(ringsnark-example PRIVATE ringsnark)
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
 add_executable(bench)
 target_sources(bench PRIVATE ${CMAKE_CURRENT_LIST_DIR}/microbench.cpp)
@@ -30,9 +27,51 @@ else ()
     message(FATAL_ERROR "Cannot find target SEAL::seal or SEAL::seal_shared")
 endif ()
 
-find_package(Boost 1.80 COMPONENTS math)
-
 ## lib: polytools
 target_link_libraries(ringsnark INTERFACE polytools)
+
+## lib: Boost
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.80)
+
 target_include_directories(ringsnark INTERFACE ${Boost_INCLUDE_DIRS})
 target_link_libraries(ringsnark INTERFACE ${Boost_LIBRARIES})
+
+## lib: Google benchmark
+target_link_libraries(ringsnark INTERFACE benchmark::benchmark)
+
+## lib: OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP enabled")
+    target_link_libraries(ringsnark INTERFACE OpenMP::OpenMP_CXX)
+endif()
+
+# Features
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result)
+if(result)
+    message(STATUS "IPO / LTO enabled")
+    set_target_properties(foo PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "IPO / LTO enabled")
+endif()
+
+# Executables
+## Examples
+file( GLOB_RECURSE EXAMPLES_SOURCES RELATIVE "${CMAKE_SOURCE_DIR}/examples/" "examples/*.cpp" )
+foreach( source_file ${EXAMPLES_SOURCES} )
+    string( REPLACE ".cpp" "" source_name ${source_file} )
+    add_executable( ${source_name} "examples/${source_file}" )
+    target_link_libraries(${source_name} PRIVATE ringsnark)
+endforeach( source_file ${EXAMPLES_SOURCES} )
+
+## Benchmarks
+file( GLOB_RECURSE EXAMPLES_SOURCES RELATIVE "${CMAKE_SOURCE_DIR}/benchmarks/" "benchmarks/*.cpp" )
+foreach( source_file ${EXAMPLES_SOURCES} )
+    string( REPLACE ".cpp" "" source_name ${source_file} )
+    add_executable( ${source_name} "benchmarks/${source_file}" )
+    target_link_libraries(${source_name} PRIVATE ringsnark)
+endforeach( source_file ${EXAMPLES_SOURCES} )

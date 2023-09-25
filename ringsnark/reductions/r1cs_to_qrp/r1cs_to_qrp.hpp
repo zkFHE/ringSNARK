@@ -2,7 +2,8 @@
  *****************************************************************************
 
  Declaration of interfaces for a R1CS-to-QRP reduction, that is, constructing
- a QRP ("Quadratic Arithmetic Program") from a R1CS ("Rank-1 Constraint System").
+ a QRP ("Quadratic Arithmetic Program") from a R1CS ("Rank-1 Constraint
+ System").
 
  QRPs are defined in \[GGPR13], and constructed for R1CS also in \[GGPR13].
 
@@ -36,31 +37,32 @@ namespace ringsnark {
 /**
  * Instance map for the R1CS-to-QRP reduction.
  */
-    template<typename RingT>
-    qrp_instance <RingT> r1cs_to_qrp_instance_map(const r1cs_constraint_system<RingT> &cs);
+template <typename RingT>
+qrp_instance<RingT> r1cs_to_qrp_instance_map(
+    const r1cs_constraint_system<RingT> &cs);
 
 /**
- * Instance map for the R1CS-to-QRP reduction followed by evaluation of the resulting QRP instance.
+ * Instance map for the R1CS-to-QRP reduction followed by evaluation of the
+ * resulting QRP instance.
  */
-    template<typename RingT>
-    qrp_instance_evaluation <RingT> r1cs_to_qrp_instance_map_with_evaluation(const r1cs_constraint_system<RingT> &cs,
-                                                                             const RingT &t);
+template <typename RingT>
+qrp_instance_evaluation<RingT> r1cs_to_qrp_instance_map_with_evaluation(
+    const r1cs_constraint_system<RingT> &cs, const RingT &t);
 
 /**
  * Witness map for the R1CS-to-QRP reduction.
  *
  * The witness map takes zero knowledge into account when d1,d2,d3 are random.
  */
-    template<typename RingT>
-    qrp_witness <RingT> r1cs_to_qrp_witness_map(const r1cs_constraint_system<RingT> &cs,
-                                                const r1cs_primary_input<RingT> &primary_input,
-                                                const r1cs_auxiliary_input<RingT> &auxiliary_input,
-                                                const RingT &d1,
-                                                const RingT &d2,
-                                                const RingT &d3);
+template <typename RingT>
+qrp_witness<RingT> r1cs_to_qrp_witness_map(
+    const r1cs_constraint_system<RingT> &cs,
+    const r1cs_primary_input<RingT> &primary_input,
+    const r1cs_auxiliary_input<RingT> &auxiliary_input, const RingT &d1,
+    const RingT &d2, const RingT &d3);
 
-} // ringsnark
+}  // namespace ringsnark
 
 #include <ringsnark/reductions/r1cs_to_qrp/r1cs_to_qrp.tcc>
 
-#endif // R1CS_TO_QRP_HPP_
+#endif  // R1CS_TO_QRP_HPP_

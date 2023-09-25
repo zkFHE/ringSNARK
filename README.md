@@ -1,4 +1,4 @@
-# ringSNARK - A modular library for zkSNARKs over rings
+# ringSNARK - A library for zkSNARKs over rings
 This repository contains a generic implementation of the Rinocchio and ringGroth16 [[1]](#1) SNARKs for general rings. 
 
 This repository also contains concrete instantiations of encodings for the rings $Z_q$, $Z_q^N$, and $Z_q[X]/\langle X^N+1\rangle$ for a composite $q$. 
@@ -17,6 +17,7 @@ For the ring $Z_q^N$, we use _batched_ encodings, which are orders of magnitude 
 ringSNARK can use two backends for fast vector/polynomial ring arithmetic: 
 - [Microsoft SEAL](https://github.com/microsoft/SEAL), via the [SEAL-Polytools](https://github.com/MarbleHE/SEAL-Polytools) arithmetic wrapper
 - [OpenFHE](https://github.com/openfheorg/openfhe-development)
+
 ### Structure 
 ```
 ├ docs --------------- auxiliary material, including specifications, scripts, and presentations
@@ -56,6 +57,8 @@ git submodule init && git submodule update --recursive
 mkdir build && cd build && cmake ..
 make
 ```
+
+Examples are available in `examples`, and benchmarks in `benchmarks`. 
 
 ## References
 <a id="1">[1]</a> C. Ganesh, A. Nitulescu, and E. Soria-Vazquez, Rinocchio: SNARKs for Ring Arithmetic. Cryptology ePrint Archive, Paper 2021/322, 2021. Available: https://eprint.iacr.org/2021/322

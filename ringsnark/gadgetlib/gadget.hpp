@@ -12,16 +12,17 @@
 
 namespace ringsnark {
 
-    template<typename RingT>
-    class gadget {
-    protected:
-        protoboard<RingT> &pb;
-        const std::string annotation_prefix;
-    public:
-        gadget(protoboard<RingT> &pb, const std::string &annotation_prefix = "");
-    };
+template <typename RingT>
+class gadget {
+ protected:
+  protoboard<RingT> &pb;
+  const std::string annotation_prefix;
 
-} // ringsnark
+ public:
+  gadget(protoboard<RingT> &pb, const std::string &annotation_prefix = "");
+};
+
+}  // namespace ringsnark
 #include <ringsnark/gadgetlib/gadget.tcc>
 
-#endif // GADGET_HPP_
+#endif  // GADGET_HPP_

@@ -1,5 +1,5 @@
-#ifndef RINGSNARK_SEAL_RING_HPP
-#define RINGSNARK_SEAL_RING_HPP
+#ifndef RINGSNARK_SEAL_RING_INT_HPP
+#define RINGSNARK_SEAL_RING_INT_HPP
 
 #include <iostream>
 #include <memory>
@@ -8,31 +8,32 @@
 #include <vector>
 
 #include "poly_arith.h"
-#include "../util/evaluation_domain.hpp"
+#include "ringsnark/util/evaluation_domain.hpp"
 #include "seal/seal.h"
 #include "seal/util/rlwe.h"
+#include "seal/util/uintarith.h"
+#include "seal/util/uintarithmod.h"
+#include "seal/util/uintarithsmallmod.h"
 
 using std::vector;
 
-namespace ringsnark::seal {
+namespace ringsnark::seal_int {
 class RingElem {
  protected:
-  using Scalar = uint64_t;
-  using Poly = polytools::SealPoly;
-
   // TODO: try and turn this into a template parameter (which would probably
   // require building a constexpr SEALContext)
   inline static ::seal::SEALContext *context = nullptr;
-  std::variant<Poly, Scalar> value = (uint64_t)0;
   inline static std::shared_ptr<::seal::UniformRandomGenerator> prng = nullptr;
-
-  [[nodiscard]] Scalar &get_scalar();
+  friend std::ostream &operator<<(std::ostream &out, const RingElem &elem);
 
  public:
+  std::vector<uint64_t> value;
+  inline static vector<seal::Modulus> modulus;
+
   /*
    * Constructors
    */
-  RingElem();
+  RingElem() = default;
 
   RingElem(const RingElem &other) = default;
 
@@ -42,9 +43,19 @@ class RingElem {
 
   virtual ~RingElem() = default;
 
-  RingElem(uint64_t value);
+  RingElem(uint64_t x) {
+    value = vector<uint64_t>(
+        context->first_context_data()->parms().coeff_modulus().size());
+    for (int i = 0; i < value.size(); i++) {
+      value[i] = seal::util::barrett_reduce_64(
+          x, context->first_context_data()->parms().coeff_modulus()[i]);
+    }
+  }
 
-  explicit RingElem(const polytools::SealPoly &poly);
+  RingElem(const vector<uint64_t> &value) : value(value) {
+    assert(value.size() ==
+           context->first_context_data()->parms().coeff_modulus().size());
+  }
 
   /*
    * Static
@@ -52,6 +63,7 @@ class RingElem {
   static void set_context(::seal::SEALContext &context_) {
     if (context == nullptr) {
       context = new ::seal::SEALContext(context_);
+      modulus = context->first_context_data()->parms().coeff_modulus();
     } else {
       throw std::invalid_argument("cannot re-set context once set");
     }
@@ -65,9 +77,13 @@ class RingElem {
     }
   }
 
-  static RingElem one() { return RingElem(1); }
+  static RingElem one() {
+    return RingElem(vector<uint64_t>(modulus.size(), 1));
+  }
 
-  static RingElem zero() { return RingElem(0); }
+  static RingElem zero() {
+    return RingElem(vector<uint64_t>(modulus.size(), 0));
+  }
 
   static RingElem random_exceptional_element(
       const shared_ptr<evaluation_domain<RingElem>> domain = nullptr) {
@@ -97,8 +113,10 @@ class RingElem {
     vector<uint64_t> coeffs(parms.poly_modulus_degree() *
                             parms.coeff_modulus().size());
     ::seal::util::sample_poly_uniform(prng, parms, coeffs.data());
+    // TODO: FIXME
     return RingElem(polytools::SealPoly(get_context(), coeffs,
-                                        &get_context().first_parms_id()));
+                                        &get_context().first_parms_id())
+                        .get_coefficient_rns(0));
   }
 
   static RingElem random_invertible_element() {
@@ -125,10 +143,6 @@ class RingElem {
   [[nodiscard]] bool is_zero() const;
 
   [[nodiscard]] bool fast_is_zero() const;
-
-  [[nodiscard]] bool is_poly() const;
-
-  [[nodiscard]] bool is_scalar() const;
 
   void negate_inplace();
 
@@ -159,26 +173,12 @@ class RingElem {
     return *this;
   }
 
-  RingElem &to_poly_inplace();
-
-  [[nodiscard]] RingElem &to_poly() const {
-    auto *res = new RingElem(*this);
-    res->to_poly_inplace();
-    return *res;
-  }
-
   [[nodiscard]] size_t hash() const;
 
   class invalid_ring_elem_types : std::invalid_argument {
    public:
     explicit invalid_ring_elem_types() : invalid_argument("invalid types") {}
   };
-
-  [[nodiscard]] Scalar get_scalar() const;
-
-  [[nodiscard]] Poly get_poly() const;
-
-  [[nodiscard]] Poly &get_poly();
 };
 
 inline RingElem operator+(const RingElem &lhs, const RingElem &rhs) {
@@ -233,8 +233,6 @@ class EncodingElem {
   class decoding_error : std::invalid_argument {
    public:
     explicit decoding_error() : invalid_argument("decoding error") {}
-    explicit decoding_error(const string &msg)
-        : invalid_argument("decoding error: " + msg) {}
   };
 
   /*
@@ -272,8 +270,24 @@ class EncodingElem {
     vector<::seal::SEALContext> enc_contexts;
     enc_contexts.reserve(ring_params.coeff_modulus().size());
 
+    // Automagically find suitable poly_modulus_degree and coeff_modulus
+    //            auto max_plain_modulus =
+    //            ring_params.coeff_modulus()[ring_params.coeff_modulus().size()
+    //            - 1].value();
+    // TODO: binary search to find optimal_poly_modulus_degree; this would
+    // require knowing how many additions need to be performed
     auto poly_modulus_degree = (N > 0) ? N : ring_params.poly_modulus_degree();
-    auto coeff_modulus = ::seal::CoeffModulus::BFVDefault(poly_modulus_degree);
+    auto coeff_modulus_max_bit_count =
+        ::seal::CoeffModulus::MaxBitCount(poly_modulus_degree);
+    vector<int> coeff_modulus_bit_counts;
+    // TODO: distribute smoothly instead?
+    while (coeff_modulus_max_bit_count > 60) {
+      coeff_modulus_bit_counts.push_back(60);
+      coeff_modulus_max_bit_count -= 60;
+    }
+    coeff_modulus_bit_counts.push_back(coeff_modulus_max_bit_count);
+    auto coeff_modulus = ::seal::CoeffModulus::Create(poly_modulus_degree,
+                                                      coeff_modulus_bit_counts);
 
     for (size_t i = 0; i < ring_params.coeff_modulus().size(); i++) {
       ::seal::EncryptionParameters enc_params(::seal::scheme_type::bgv);
@@ -407,12 +421,12 @@ inline bool operator==(const EncodingElem &lhs, const EncodingElem &rhs) {
   }
   return true;
 }
-}  // namespace ringsnark::seal
+}  // namespace ringsnark::seal_int
 
 namespace std {
 template <>
-struct hash<ringsnark::seal::RingElem> {
-  size_t operator()(const ringsnark::seal::RingElem &r) const {
+struct hash<ringsnark::seal_int::RingElem> {
+  size_t operator()(const ringsnark::seal_int::RingElem &r) const {
     return r.hash();
   }
 };
